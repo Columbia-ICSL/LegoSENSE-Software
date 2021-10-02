@@ -1,5 +1,21 @@
 #!/usr/bin/env python3
 import argparse
+import requests
+
+from config import WEB_SERVER_PORT
+
+
+def send_to_sehd(command, module):
+    assert command in ['start', 'stop', 'restart']
+    url = f'http://127.0.0.1:{WEB_SERVER_PORT}/{command}/{module}'
+    response = requests.post(url=url, timeout=10)
+    if response.status_code > 200:
+        # Error
+        message = f'Error {response.status_code} {response.reason}:\n' + response.text
+        raise RuntimeError(message)
+    else:
+        print(response.text)
+
 
 if __name__ == '__main__':
     # Parse Arguments
@@ -34,7 +50,6 @@ if __name__ == '__main__':
     elif args.command == 'uninstall':
         raise NotImplementedError(f'Uninstall {args.ModuleName} from {args.InstallTo}')
     elif args.command.startswith('slot'):
-        slot = args.command.lstrip('slot')
-        raise NotImplementedError(f'{args.Operation} {slot}')
+        send_to_sehd(args.Operation, args.command)  # start/stop/restart, slotX
     else:
         raise NotImplementedError(args)
