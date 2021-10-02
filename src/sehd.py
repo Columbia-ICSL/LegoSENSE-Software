@@ -7,7 +7,7 @@ import argparse
 import fuse
 
 from config import MODULES
-from worker import SensorHubModule
+from worker import SensorHubModule, start_web_server
 
 
 # TODO: Handle RuntimeError(1): mount point is itself a fuse volume -- umount -f /absolute/path/to/mount_point
@@ -26,7 +26,9 @@ class SensorHubDaemon(fuse.Operations):
         # Initialize modules
         self.modules = dict()
         for module, sensors in MODULES.items():
+            # TODO: Pass in some queue / event for webserver <--> sensor worker thread communication
             self.modules[module] = SensorHubModule(module, sensors)
+        start_web_server()
 
     # Given a 'stat_result' object, convert it into a Python dictionary.
     @staticmethod

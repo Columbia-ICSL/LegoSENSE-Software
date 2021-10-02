@@ -5,3 +5,5 @@ MODULES = {
     'M3': [],
     'M4': ['co2', 'tempHum', 'airQua']
 }
+
+WEB_SERVER_PORT = 1515
