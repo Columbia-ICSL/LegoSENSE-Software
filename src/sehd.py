@@ -1,53 +1,16 @@
 # SensorHub Background Process
 import os
-import time
 import errno
 import tempfile
 import argparse
-import datetime
-from threading import Thread
 
 import fuse
 
-# TODO: this should be loaded from config
-MODULES = {
-    'M1': [],
-    'M2': [],
-    'M3': [],
-    'M4': ['co2', 'tempHum', 'airQua']
-}
+from config import MODULES
+from worker import SensorHubModule
 
 
 # TODO: Handle RuntimeError(1): mount point is itself a fuse volume -- umount -f /absolute/path/to/mount_point
-
-class SensorHubModule(Thread):
-    def __init__(self, module, sensors):
-        assert isinstance(module, str)
-        assert isinstance(sensors, list)
-
-        assert len(sensors) == len(MODULES[module])
-        self.module = module
-        self.sensor = {}
-        for i in sensors:
-            self.sensor[i] = f"Module {self.module}: {i}\n".encode()
-        print(f"{self.module} init")
-
-        Thread.__init__(self)
-        self.start()
-
-    def run(self):
-        # TODO: Gracefully kill the thread
-        while True:
-            print(f'{self.module} working...')
-            timestr = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
-
-            for i in self.sensor.keys():
-                hum = 10
-                temp = 20
-                self.sensor[i] += f'{timestr}\t{temp:.2f}\t{hum:.2f}\n'.encode()
-            time.sleep(0.2)
-
-
 class SensorHubDaemon(fuse.Operations):
     def __init__(self):
         # Get default stats for an empty directory and empty file.
