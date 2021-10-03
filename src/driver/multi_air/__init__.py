@@ -1,0 +1,1 @@
+from multi_air_driver import MultiAirModule as SensorHubModule

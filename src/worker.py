@@ -1,11 +1,12 @@
 import time
 import datetime
+import importlib
 from threading import Thread
 from flask import Flask, make_response
 from config import MODULES, WEB_SERVER_PORT
 
 
-class SensorHubModule(Thread):
+class ModuleWorker(Thread):
     def __init__(self, module, sensors):
         assert isinstance(module, str)
         assert isinstance(sensors, list)
@@ -16,6 +17,9 @@ class SensorHubModule(Thread):
         for i in sensors:
             self.sensor[i] = f"Module {self.module}: {i}\n".encode()
         print(f"{self.module} init")
+        # TODO: Load from config file
+        module_driver = importlib.import_module('driver.multi_air').SensorHubModule
+        self.driver = module_driver('/config/path')
 
         Thread.__init__(self)
         self.start()
@@ -27,9 +31,7 @@ class SensorHubModule(Thread):
             timestr = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
 
             for i in self.sensor.keys():
-                hum = 10
-                temp = 20
-                self.sensor[i] += f'{timestr}\t{temp:.2f}\t{hum:.2f}\n'.encode()
+                self.sensor[i] += self.driver.read(i).encode()
             time.sleep(0.2)
 
 
