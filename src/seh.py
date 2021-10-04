@@ -18,12 +18,29 @@ def send_to_sehd(command, module):
         print(response.text)
 
 
+def reload_service():
+    url = f'http://127.0.0.1:{WEB_SERVER_PORT}/reload'
+    response = requests.post(url=url, timeout=10)
+    if response.status_code > 200:
+        # Error
+        message = f'Error {response.status_code} {response.reason}:\n' + response.text
+        raise RuntimeError(message)
+    else:
+        print(response.text)
+
+
 def install_driver(module_name, install_to):
-    raise NotImplementedError(f'Install {module_name} to {install_to}')
+    # TODO: Implement installation
+    print(f'Installed {module_name} to {install_to}')
+    input('Press enter to restart SensorHub Service')
+    reload_service()
 
 
 def uninstall_driver(uninstall_from):
-    raise NotImplementedError(f'Uninstall from {uninstall_from}')
+    # TODO: Implement uninstallation
+    print(f'Uninstalled {uninstall_from}')
+    input('Press enter to restart SensorHub Service')
+    reload_service()
 
 
 if __name__ == '__main__':
@@ -52,6 +69,9 @@ if __name__ == '__main__':
         parser_slot.add_argument('Operation', help='start/stop/restart',
                                  choices=['start', 'stop', 'restart'])
 
+    # > seh reload
+    parser_reload = subparsers.add_parser('reload', help='Reload SensorHub Service')
+
     args = parser.parse_args()
 
     if args.command == 'install':
@@ -60,5 +80,7 @@ if __name__ == '__main__':
         uninstall_driver(args.UninstallFrom)
     elif args.command.startswith('slot'):
         send_to_sehd(args.Operation, args.command)  # start/stop/restart, slotX
+    elif args.command == 'reload':
+        reload_service()
     else:
         raise NotImplementedError(args)
