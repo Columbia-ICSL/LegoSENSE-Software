@@ -1,9 +1,10 @@
+# Workers for SensorHub Background Process
 import time
 import datetime
 import importlib
 from threading import Thread
 from flask import Flask, make_response
-from config import MODULES, WEB_SERVER_PORT
+from config import WEB_SERVER_PORT
 
 
 class ModuleWorker(Thread):
@@ -11,7 +12,6 @@ class ModuleWorker(Thread):
         assert isinstance(module, str)
         assert isinstance(sensors, list)
 
-        assert len(sensors) == len(MODULES[module])
         self.module = module
         self.sensor = dict()
         for i in sensors:
@@ -21,18 +21,20 @@ class ModuleWorker(Thread):
         module_driver = importlib.import_module('driver.multi_air').SensorHubModule
         self.driver = module_driver('/config/path')
 
+        self.active = True
         Thread.__init__(self)
         self.start()
 
     def run(self):
-        # TODO: Gracefully kill the thread
-        while True:
+        while self.active:
             # print(f'{self.module} working...')
             timestr = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
 
             for i in self.sensor.keys():
                 self.sensor[i] += self.driver.read(i).encode()
             time.sleep(0.2)
+
+        # TODO: call driver's function to gracefully terminate
 
 
 # --------------- Web server to handle requests from seh start/... ---------------

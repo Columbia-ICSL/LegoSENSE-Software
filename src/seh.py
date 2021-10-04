@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SensorHub Command-line Control
 import argparse
 import requests
 
@@ -15,6 +16,14 @@ def send_to_sehd(command, module):
         raise RuntimeError(message)
     else:
         print(response.text)
+
+
+def install_driver(module_name, install_to):
+    raise NotImplementedError(f'Install {module_name} to {install_to}')
+
+
+def uninstall_driver(uninstall_from):
+    raise NotImplementedError(f'Uninstall from {uninstall_from}')
 
 
 if __name__ == '__main__':
@@ -46,9 +55,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.command == 'install':
-        raise NotImplementedError(f'Install {args.ModuleName} to {args.InstallTo}')
+        install_driver(args.ModuleName, args.InstallTo)
     elif args.command == 'uninstall':
-        raise NotImplementedError(f'Uninstall {args.ModuleName} from {args.InstallTo}')
+        uninstall_driver(args.UninstallFrom)
     elif args.command.startswith('slot'):
         send_to_sehd(args.Operation, args.command)  # start/stop/restart, slotX
     else:
