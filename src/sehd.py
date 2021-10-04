@@ -16,19 +16,10 @@ class SensorHubModuleManager:
         self.installed_modules = config.INSTALLED_MODULES
         self.modules_worker = dict()
         self.start_workers()
-        start_web_server()
+        start_web_server(self)
 
     def __del__(self):
         self.stop_workers()
-
-    def reload(self):
-        self.stop_workers()
-
-        # Reload config
-        importlib.reload(config)
-        self.installed_modules = config.INSTALLED_MODULES
-
-        self.start_workers()
 
     def start_workers(self):
         for module, sensors in self.installed_modules.items():
@@ -57,6 +48,27 @@ class SensorHubModuleManager:
 
     def get_sensor_data(self, module, sensor, offset, length):
         return self.modules_worker[module].sensor[sensor][offset: offset + length]
+
+    # ============ Callbacks from web server to control individual module ============
+    # ================================================================================
+    def reload(self):
+        self.stop_workers()
+
+        # Reload config
+        importlib.reload(config)
+        self.installed_modules = config.INSTALLED_MODULES
+
+        self.start_workers()
+        return {'ok': True, 'err_msg': ''}
+
+    def module_start(self, module):
+        return {'ok': True, 'mod_name': 'fake_module'}
+
+    def module_stop(self, module):
+        return {'ok': True, 'mod_name': 'fake_module'}
+
+    def module_restart(self, module):
+        return {'ok': True, 'mod_name': 'fake_module'}
 
 
 class SensorHubFSInterface(fuse.Operations):
