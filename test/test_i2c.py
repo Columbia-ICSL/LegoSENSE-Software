@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import smbus
+from smbus2 import SMBus
 import errno
 
 if __name__ == "__main__":
     bus_number = 1  # 1 indicates /dev/i2c-1
-    bus = smbus.SMBus(bus_number)
+    bus = SMBus(bus_number)
     device_count = 0
 
     for device in range(3, 128):
