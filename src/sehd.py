@@ -32,6 +32,7 @@ class SensorHubModuleManager:
             worker.active = False
         for worker in self.modules_worker.values():
             worker.join()
+        self.modules_worker = dict()
         print('Sensor workers stopped')
 
     def get_modules(self):
