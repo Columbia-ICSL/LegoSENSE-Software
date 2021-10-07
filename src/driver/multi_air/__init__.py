@@ -1,1 +1,2 @@
 from driver.multi_air.multi_air_driver import MultiAirModule as SensorHubModule
+from driver.multi_air.multi_air_driver import MultiAirModuleSensors as SENSORS

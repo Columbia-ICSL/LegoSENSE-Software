@@ -1,4 +1,5 @@
 # Workers for SensorHub Background Process
+import os
 import time
 import datetime
 import importlib
@@ -7,20 +8,25 @@ from flask import Flask, make_response
 
 from config import WEB_SERVER_PORT
 
+DRIVER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'driver')
+
 
 class ModuleWorker(Thread):
-    def __init__(self, module, sensors):
-        assert isinstance(module, str)
-        assert isinstance(sensors, list)
+    def __init__(self, module_name, slot):
+        assert isinstance(module_name, str)
+        print(f"{module_name} init")
 
-        self.module = module
+        self.module = module_name
+        module = importlib.import_module(f'driver.{module_name}')
+        module_driver = module.SensorHubModule
+
+        self.module_sensors = module.SENSORS
         self.sensor = dict()
-        for i in sensors:
+        for i in self.module_sensors:
             self.sensor[i] = f"Module {self.module}: {i}\n".encode()
-        print(f"{self.module} init")
-        # TODO: Load from config file
-        module_driver = importlib.import_module('driver.multi_air').SensorHubModule
-        self.driver = module_driver('/config/path')
+
+        # TODO: Pass in slot
+        self.driver = module_driver(os.path.join(DRIVER_PATH, module_name, 'config.json'))
 
         self.active = True
         Thread.__init__(self)
@@ -30,10 +36,9 @@ class ModuleWorker(Thread):
         while self.active:
             # print(f'{self.module} working...')
             timestr = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
-
-            for i in self.sensor.keys():
-                self.sensor[i] += self.driver.read(i).encode()
-            time.sleep(0.2)
+            available_sensors = self.driver.wait_for_next_sample()
+            for i in available_sensors:
+                self.sensor[i] += (timestr + '\t' + self.driver.read(i)).encode()
 
         # TODO: call driver's function to gracefully terminate
 

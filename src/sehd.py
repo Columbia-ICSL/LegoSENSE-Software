@@ -22,9 +22,9 @@ class SensorHubModuleManager:
         self.stop_workers()
 
     def start_workers(self):
-        for module, sensors in self.installed_modules.items():
-            # TODO: Pass in some queue / event for webserver <--> sensor worker thread communication
-            self.modules_worker[module] = ModuleWorker(module, sensors)
+        for slot, module in self.installed_modules.items():
+            if module != '':
+                self.modules_worker[module] = ModuleWorker(module, slot)
 
     def stop_workers(self):
         print('Stopping sensor workers....')
@@ -35,10 +35,12 @@ class SensorHubModuleManager:
         print('Sensor workers stopped')
 
     def get_modules(self):
-        return list(self.installed_modules.keys())
+        installed_modules = list(self.modules_worker.keys())
+        empty_slots = [slot for slot in list(self.installed_modules.keys()) if self.installed_modules[slot] == '']
+        return installed_modules + empty_slots
 
     def get_sensors(self, module):
-        return self.installed_modules[module]
+        return self.modules_worker[module].module_sensors if module in self.modules_worker.keys() else []
 
     def get_module_worker(self, module):
         return self.modules_worker[module]
