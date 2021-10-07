@@ -29,7 +29,7 @@ class ModuleWorker(Thread):
 
         self.interface = SensorHubInterface(slot)
         self.driver = module_driver(
-            config_path=os.path.join(DRIVER_PATH, module_name, 'config.json'),
+            config_path=os.path.join(DRIVER_PATH, module_name, 'config.ini'),
             interface=self.interface
             )
 

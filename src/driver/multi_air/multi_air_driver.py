@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from configparser import ConfigParser
 
 sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
 from driver.driver_template import SensorHubModuleTemplate
@@ -11,6 +12,10 @@ MultiAirModuleSensors = ['airQua', 'TempHum', 'CO2']
 
 class MultiAirModule(SensorHubModuleTemplate):
     def __init__(self, config_path, interface):
+        self.config = ConfigParser()
+        self.config.read(config_path)
+        self.fs = float(self.config['Temperature Humidity']['SamplingFrequency'])
+
         self.temp_hum = Pi_HDC2080(twi=interface.i2c_bus)
         self.temp_hum.readHumidity()
 
@@ -26,5 +31,5 @@ class MultiAirModule(SensorHubModuleTemplate):
             return f'{sensor}: not implemented'
 
     def wait_for_next_sample(self):
-        time.sleep(0.2)
+        time.sleep(1 / self.fs)
         return MultiAirModuleSensors
