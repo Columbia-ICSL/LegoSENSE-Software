@@ -3,7 +3,7 @@
 import argparse
 import requests
 
-from config import WEB_SERVER_PORT, install_config, uninstall_config, list_config
+from config import WEB_SERVER_PORT, install_config, uninstall_config, list_config, edit_module_config
 
 
 def send_to_sehd(command, module):
@@ -79,6 +79,10 @@ if __name__ == '__main__':
         parser_slot.add_argument('Operation', help='start/stop/restart',
                                  choices=['start', 'stop', 'restart'])
 
+    # > seh edit slotX/module_name
+    parser_edit = subparsers.add_parser(f'edit', help=f'Edit module configuration')
+    parser_edit.add_argument('Name', help='slotX/module_name')
+
     # > seh reload
     parser_reload = subparsers.add_parser('reload', help='Reload SensorHub Service')
 
@@ -92,6 +96,8 @@ if __name__ == '__main__':
         list_drivers()
     elif args.command.startswith('slot'):
         send_to_sehd(args.Operation, args.command)  # start/stop/restart, slotX
+    elif args.command == 'edit':
+        edit_module_config(args.Name)
     elif args.command == 'reload':
         reload_service()
     else:

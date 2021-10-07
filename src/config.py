@@ -50,3 +50,19 @@ def list_config():
         else:
             module_name = INSTALLED_MODULES[slot]
             print(f'{slot}:\t{module_name}')
+
+
+def edit_module_config(slot_or_module):
+    from subprocess import call
+    module_name = ''
+    if slot_or_module in INSTALLED_MODULES.keys():
+        module_name = INSTALLED_MODULES[slot_or_module]
+    if slot_or_module != '' and slot_or_module in INSTALLED_MODULES.values():
+        module_name = slot_or_module
+
+    if module_name != '':
+        driver_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'driver')
+        module_config = os.path.join(driver_path, module_name, 'config.ini')
+        call(['vim', module_config])
+    else:
+        print(f'ERROR: Module not found: {slot_or_module}. Use seh list to check installed modules.')
