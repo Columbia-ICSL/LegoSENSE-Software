@@ -14,9 +14,10 @@ DRIVER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'driver'
 class ModuleWorker(Thread):
     def __init__(self, module_name, slot):
         assert isinstance(module_name, str)
-        print(f"{module_name} init")
+        print(f"{module_name} init at {slot}")
 
         self.module = module_name
+        self.slot = slot
         module = importlib.import_module(f'driver.{module_name}')
         module_driver = module.SensorHubModule
 
@@ -39,8 +40,8 @@ class ModuleWorker(Thread):
             available_sensors = self.driver.wait_for_next_sample()
             for i in available_sensors:
                 self.sensor[i] += (timestr + '\t' + self.driver.read(i)).encode()
-
         # TODO: call driver's function to gracefully terminate
+        print(f'{self.module} at {self.slot} terminated')
 
 
 # --------------- Web server to handle requests from seh start/... ---------------

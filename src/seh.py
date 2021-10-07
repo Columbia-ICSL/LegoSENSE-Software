@@ -3,7 +3,7 @@
 import argparse
 import requests
 
-from config import WEB_SERVER_PORT
+from config import WEB_SERVER_PORT, install_config, uninstall_config, list_config
 
 
 def send_to_sehd(command, module):
@@ -31,16 +31,22 @@ def reload_service():
 
 def install_driver(module_name, install_to):
     # TODO: Implement installation
-    print(f'Installed {module_name} to {install_to}')
-    input('Press enter to restart SensorHub Service')
-    reload_service()
+    if install_config(module_name, install_to):
+        print(f'Installed {module_name} to {install_to}')
+        input('Press enter to restart SensorHub Service')
+        reload_service()
 
 
 def uninstall_driver(uninstall_from):
     # TODO: Implement uninstallation
-    print(f'Uninstalled {uninstall_from}')
-    input('Press enter to restart SensorHub Service')
-    reload_service()
+    if uninstall_config(uninstall_from):
+        print(f'Uninstalled {uninstall_from}')
+        input('Press enter to restart SensorHub Service')
+        reload_service()
+
+
+def list_drivers():
+    list_config()
 
 
 if __name__ == '__main__':
@@ -63,6 +69,10 @@ if __name__ == '__main__':
         'uninstall', help='Uninstall a new SensorHub module from a specific slot')
     parser_uninstall.add_argument('UninstallFrom', help='/'.join(slots_description), choices=slots_description)
 
+    # > seh list
+    parser_list = subparsers.add_parser(
+        'list', help='List installed SensorHub modules for each slots')
+
     # > seh slotX start/stop/restart
     for slot_x in available_slots:
         parser_slot = subparsers.add_parser(f'slot{slot_x}', help=f'start/stop/restart module on slot{slot_x}')
@@ -78,6 +88,8 @@ if __name__ == '__main__':
         install_driver(args.ModuleName, args.InstallTo)
     elif args.command == 'uninstall':
         uninstall_driver(args.UninstallFrom)
+    elif args.command == 'list':
+        list_drivers()
     elif args.command.startswith('slot'):
         send_to_sehd(args.Operation, args.command)  # start/stop/restart, slotX
     elif args.command == 'reload':
