@@ -5,9 +5,9 @@ import time
 
 
 class SensorHubModuleTemplate:
-    def __init__(self, config_path):
+    def __init__(self, config_path, interface):
         # TODO: Add lock
-        pass
+        print(f'I2C Bus: {interface.i2c_bus}')
 
     def read(self, sensor) -> str:
         return 'data string to be appended to the file accessed by user\n'

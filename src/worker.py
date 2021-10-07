@@ -7,6 +7,7 @@ from threading import Thread
 from flask import Flask, make_response
 
 from config import WEB_SERVER_PORT
+from hal.interface import SensorHubInterface
 
 DRIVER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'driver')
 
@@ -26,8 +27,11 @@ class ModuleWorker(Thread):
         for i in self.module_sensors:
             self.sensor[i] = f"Module {self.module}: {i}\n".encode()
 
-        # TODO: Pass in slot
-        self.driver = module_driver(os.path.join(DRIVER_PATH, module_name, 'config.json'))
+        self.interface = SensorHubInterface(slot)
+        self.driver = module_driver(
+            config_path=os.path.join(DRIVER_PATH, module_name, 'config.json'),
+            interface=self.interface
+            )
 
         self.active = True
         Thread.__init__(self)
