@@ -52,6 +52,10 @@ class SensorHubModuleManager:
     def get_sensor_data(self, module, sensor, offset, length):
         return self.modules_worker[module].sensor[sensor][offset: offset + length]
 
+    def write_data(self, module, sensor, offset, buf):
+        self.modules_worker[module].driver.write(buf)
+        return len(buf)
+
     # ============ Callbacks from web server to control individual module ============
     # ================================================================================
     def reload(self):
@@ -137,6 +141,8 @@ class SensorHubFSInterface(fuse.Operations):
 
     # Implementation for read
     def read(self, path, length, offset, fh):
+        # Usage: cat /path/to/sensor/psudo/file
+        # Usage: tail -F /path/to/sensor/psudo/file
         module, sensor = self._parse_path(path)
         if module is None:
             print('Error read: ' + repr({'path': path, 'buf': length, 'offset': offset}))
@@ -145,13 +151,13 @@ class SensorHubFSInterface(fuse.Operations):
 
     # Implementation for write
     def write(self, path, buf, offset, fh):
-        print(f'write{path}')
+        # Usage: echo "xxx" >> /path/to/sensor/psudo/file
+        # print(f'write{path}')
         module, sensor = self._parse_path(path)
         if module is None:
             print('Error write: ' + repr({'path': path, 'buf': buf, 'offset': offset}))
             raise fuse.FuseOSError(errno.EIO)
-        print('Write not implemented')
-        print({'path': path, 'buf': buf, 'offset': offset})
+        return self.model.write_data(module, sensor, offset, buf)
 
     # Implementation for close
     def release(self, path, fh):
