@@ -27,7 +27,23 @@ channels = {
     7: 0x38
 }
 
-for channel, tx in channels.items():
-    rx = spi.xfer([tx, 0x00])
-    result = (rx[1] / 4096) * 3.3
-    print('CH%d: %.3fV\t(%d)' % (channel, result, rx[1]))
+# for channel, tx in channels.items():
+#     rx = spi.xfer([tx, 0x00], 1000000)
+#     result = (rx[1] / 4096) * 3.3
+#     print('CH%d: %.3fV\t(%d)' % (channel, result, rx[1]))
+
+def read_adc(reg):
+    rx = spi.xfer([reg, 0x00])
+    data = ((rx[0] & 0x0f) << 8 | rx[1]) / 4096 * 3.3
+    # data = (rx[2] << 8 | rx[1]) / 4096 * 3.3
+    return data
+
+import time
+while True:
+    for ch in range(8):
+        data = read_adc(channels[ch])
+        print(f'{data: .3f}', end='\t')
+    print()
+    # data = read_adc(channels[6])
+    # print(f'{data: .3f}')
+    time.sleep(0.05)
