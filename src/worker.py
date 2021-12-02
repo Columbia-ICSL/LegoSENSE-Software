@@ -42,6 +42,8 @@ class ModuleWorker(Thread):
             # print(f'{self.module} working...')
             timestr = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
             available_sensors = self.driver.wait_for_next_sample()
+            assert isinstance(available_sensors, list), \
+                f'[{self.module}] DriverError: wait_for_next_sample must return list!'
             for i in available_sensors:
                 self.sensor[i] += (timestr + '\t' + self.driver.read(i)).encode()
         # TODO: call driver's function to gracefully terminate
