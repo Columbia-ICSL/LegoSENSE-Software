@@ -1,0 +1,3 @@
+[submodule "src/dashboard"]
+	path = src/dashboard
+	url = https://github.com/Columbia-ICSL/SensorHub-Dashboard.git

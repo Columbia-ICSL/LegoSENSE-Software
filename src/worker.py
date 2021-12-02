@@ -4,7 +4,7 @@ import time
 import datetime
 import importlib
 from threading import Thread
-from flask import Flask, make_response
+from flask import Flask, make_response, render_template
 
 from config import WEB_SERVER_PORT
 from hal.interface import SensorHubInterface
@@ -51,14 +51,54 @@ class ModuleWorker(Thread):
 
 
 # --------------- Web server to handle requests from seh start/... ---------------
-server = Flask(__name__)
+dashboard_root = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dashboard'), 'apps')
+server = Flask(
+    __name__,
+    root_path=dashboard_root
+)
 manager = None
 
 
+# TODO: Instead of copy these routes from SensorHub-dashboard submodule, import from it
 @server.route("/")
 def index_page():
-    # TODO: Some system statistics?
-    return make_response('SensorHub Running!')
+    slot1 = {
+        'slot': 1,
+        'name': 'Air Quality',
+        'sensors': zip(['PM Sensor'], range(1))
+    }
+    slot2 = {
+        'slot': 2,
+        'name': 'Wind',
+        'sensors': zip(['Wind Speed Sensor'], range(1))
+    }
+    slot3 = {
+        'slot': 3,
+        'name': 'Multi-purpose Air Sensor',
+        'sensors': zip(['CO2 Sensor', 'Temperature & Humidity Sensor', 'Air Pressure Sensor'], range(3))
+    }
+    return render_template('dashboard/main.html', segment="dashboard", modules=[slot1, slot2, slot3])
+
+
+@server.route('/data')
+def data():
+    return render_template('data/main.html', segment="data")
+
+
+@server.route('/setting/<module_name>')
+def sensor_setting(module_name):
+    module_info = {
+        'name': module_name,
+        'settings': {
+            'Temperature Humidity': {
+                'Samples per second': 2
+            },
+            'CO2': {
+                'Samples per second': 1
+            }
+        }
+    }
+    return render_template('setting/main.html', module=module_info)
 
 
 @server.route('/start/<string:text>', methods=['POST'])
