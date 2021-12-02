@@ -1,5 +1,6 @@
 # SensorHub Background Process
 import os
+import re
 import errno
 import tempfile
 import argparse
@@ -42,6 +43,21 @@ class SensorHubModuleManager:
 
     def get_sensors(self, module):
         return self.modules_worker[module].module_sensors if module in self.modules_worker.keys() else []
+
+    def get_modules_and_sensors(self):
+        modules = []
+        for slot_name, module_name in self.installed_modules.items():
+            module = dict()
+            if module_name != '':
+                slot_number = re.findall(r'slot(\d+)', slot_name)
+                assert len(slot_number) == 1, f'Unable to parse slot number from "{slot_name}"!'
+                sensors = self.get_sensors(module_name)
+                assert len(sensors) > 0, f'Module "{module_name}" has empty list of sensors!'
+                module['slot'] = int(slot_number[0])
+                module['name'] = module_name
+                module['sensors'] = zip(sensors, list(range(len(sensors))))
+                modules.append(module)
+        return modules
 
     def get_module_worker(self, module):
         return self.modules_worker[module]

@@ -62,22 +62,8 @@ manager = None
 # TODO: Instead of copy these routes from SensorHub-dashboard submodule, import from it
 @server.route("/")
 def index_page():
-    slot1 = {
-        'slot': 1,
-        'name': 'Air Quality',
-        'sensors': zip(['PM Sensor'], range(1))
-    }
-    slot2 = {
-        'slot': 2,
-        'name': 'Wind',
-        'sensors': zip(['Wind Speed Sensor'], range(1))
-    }
-    slot3 = {
-        'slot': 3,
-        'name': 'Multi-purpose Air Sensor',
-        'sensors': zip(['CO2 Sensor', 'Temperature & Humidity Sensor', 'Air Pressure Sensor'], range(3))
-    }
-    return render_template('dashboard/main.html', segment="dashboard", modules=[slot1, slot2, slot3])
+    modules = manager.get_modules_and_sensors()
+    return render_template('dashboard/main.html', segment="dashboard", modules=modules)
 
 
 @server.route('/data')
@@ -146,8 +132,24 @@ def start_web_server(module_manager):
 if __name__ == '__main__':
     class _FakeModuleManager:
         fake_ok_response = {'ok': True, 'mod_name': 'fake_module'}
+        slot1 = {
+            'slot': 1,
+            'name': 'Air Quality',
+            'sensors': zip(['PM Sensor'], range(1))
+        }
+        slot2 = {
+            'slot': 2,
+            'name': 'Wind',
+            'sensors': zip(['Wind Speed Sensor'], range(1))
+        }
+        slot3 = {
+            'slot': 3,
+            'name': 'Multi-purpose Air Sensor',
+            'sensors': zip(['CO2 Sensor', 'Temperature & Humidity Sensor', 'Air Pressure Sensor'], range(3))
+        }
         def module_start(self, module): return self.fake_ok_response
         def module_stop(self, module): return self.fake_ok_response
         def module_restart(self, module): return self.fake_ok_response
+        def get_modules_and_sensors(self): return [self.slot1, self.slot2, self.slot3]
 
     start_web_server(_FakeModuleManager())
