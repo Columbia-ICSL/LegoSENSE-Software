@@ -1,5 +1,6 @@
 fusepy==3.0.1
 flask==2.0.1
+Flask-SSE==1.0.0
 requests==2.26.0
 RPi.GPIO==0.7.0
 smbus2==0.4.1

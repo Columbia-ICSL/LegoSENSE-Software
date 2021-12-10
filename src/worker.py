@@ -5,7 +5,8 @@ import datetime
 import importlib
 from threading import Thread
 from flask import Flask, make_response, render_template
-
+from flask_sse import sse
+# from gevent.pywsgi import WSGIServer
 from config import WEB_SERVER_PORT
 from hal.interface import SensorHubInterface
 
@@ -56,6 +57,9 @@ server = Flask(
     __name__,
     root_path=dashboard_root
 )
+server.config['REDIS_URL'] = 'redis://localhost'
+server.register_blueprint(sse, url_prefix='/stream')
+
 manager = None
 
 
@@ -71,20 +75,21 @@ def data():
     return render_template('data/main.html', segment="data")
 
 
-@server.route('/setting/<module_name>')
-def sensor_setting(module_name):
+# TODO: What if I have two same module?
+@server.route('/module/<module_name>')
+def module_details(module_name):
     module_info = {
         'name': module_name,
         'settings': {
-            'Temperature Humidity': {
+            'Temperature & Humidity Sensor': {
                 'Samples per second': 2
             },
-            'CO2': {
+            'CO2 Sensor': {
                 'Samples per second': 1
             }
         }
     }
-    return render_template('setting/main.html', module=module_info)
+    return render_template('module/main.html', module=module_info)
 
 
 @server.route('/start/<string:text>', methods=['POST'])
@@ -127,29 +132,52 @@ def start_web_server(module_manager):
     global manager
     manager = module_manager
     Thread(target=lambda: server.run(host='0.0.0.0', port=WEB_SERVER_PORT, debug=True, use_reloader=False)).start()
+    # Thread(target=lambda: WSGIServer(('0.0.0.0', WEB_SERVER_PORT), server).serve_forever()).start()
 
 
 if __name__ == '__main__':
+    import random
+    import threading
+
+    import numpy as np
+
     class _FakeModuleManager:
         fake_ok_response = {'ok': True, 'mod_name': 'fake_module'}
         slot1 = {
             'slot': 1,
             'name': 'Air Quality',
-            'sensors': zip(['PM Sensor'], range(1))
+            'sensors': list(zip(['PM Sensor'], range(1)))
         }
         slot2 = {
             'slot': 2,
             'name': 'Wind',
-            'sensors': zip(['Wind Speed Sensor'], range(1))
+            'sensors': list(zip(['Wind Speed Sensor'], range(1)))
         }
         slot3 = {
             'slot': 3,
             'name': 'Multi-purpose Air Sensor',
-            'sensors': zip(['CO2 Sensor', 'Temperature & Humidity Sensor', 'Air Pressure Sensor'], range(3))
+            'sensors': list(zip(['CO2 Sensor', 'Temperature & Humidity Sensor', 'Air Pressure Sensor'], range(3)))
         }
         def module_start(self, module): return self.fake_ok_response
         def module_stop(self, module): return self.fake_ok_response
         def module_restart(self, module): return self.fake_ok_response
         def get_modules_and_sensors(self): return [self.slot1, self.slot2, self.slot3]
 
-    start_web_server(_FakeModuleManager())
+
+    test_manager = _FakeModuleManager()
+
+    def fake_data_worker():
+        while True:
+            data_from = random.sample(test_manager.get_modules_and_sensors(), k=1)[0]
+            module = data_from['name']
+            sensor = random.sample(data_from['sensors'], k=1)[0][0]
+            t_window = list(np.linspace(time.time() - 1, time.time(), 10))
+            data_window = list(map(lambda x: random.randint(0, 100), t_window))
+            with server.app_context():
+                destination = f'{module}.{sensor}'
+                sse.publish({'time': t_window, 'data': data_window}, type=destination)
+                print(f'Published to {destination}')
+            time.sleep(0.1)
+
+    threading.Thread(target=fake_data_worker, daemon=True).start()
+    start_web_server(test_manager)
