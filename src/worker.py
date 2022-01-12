@@ -152,10 +152,22 @@ if __name__ == '__main__':
             'name': 'Multi-purpose Air Sensor',
             'sensors': list(zip(['CO2 Sensor', 'Temperature & Humidity Sensor', 'Air Pressure Sensor'], range(3)))
         }
+        fake_slots = {'Air Quality': slot1, 'Wind': slot2, 'Multi-purpose Air Sensor': slot3}
         def module_start(self, module): return self.fake_ok_response
         def module_stop(self, module): return self.fake_ok_response
         def module_restart(self, module): return self.fake_ok_response
         def get_modules_and_sensors(self): return [self.slot1, self.slot2, self.slot3]
+
+        def get_module_config(self, module):
+            assert module in ['Air Quality', 'Wind', 'Multi-purpose Air Sensor']
+            fake_cfg = dict()
+            for sensor, idx in self.fake_slots[module]['sensors']:
+                fake_cfg[sensor] = {f'{sensor}ConfigKey': '1'}
+            return fake_cfg
+
+        def get_sensors(self, module):
+            assert module in ['Air Quality', 'Wind', 'Multi-purpose Air Sensor']
+            return [sensor for sensor, idx in self.fake_slots[module]['sensors']]
 
 
     test_manager = _FakeModuleManager()
