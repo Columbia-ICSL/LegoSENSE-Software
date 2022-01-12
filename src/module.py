@@ -51,6 +51,15 @@ class SensorHubModuleManager:
                 modules.append(module)
         return modules
 
+    def get_module_config(self, module):
+        parsed = self.modules_worker[module].driver.get_config()
+        return {section: dict(parsed.items(section)) for section in parsed.sections()}
+        # TODO: have driver define each config's default, data type, UI type (slider, dropdown select, etc)
+
+    def set_module_config(self, module, new_cfg):
+        # TODO
+        pass
+
     def get_module_worker(self, module):
         return self.modules_worker[module]
 

@@ -80,14 +80,8 @@ def data():
 def module_details(module_name):
     module_info = {
         'name': module_name,
-        'settings': {
-            'Temperature & Humidity Sensor': {
-                'Samples per second': 2
-            },
-            'CO2 Sensor': {
-                'Samples per second': 1
-            }
-        }
+        'settings': manager.get_module_config(module_name),
+        'sensors': manager.get_sensors(module_name)
     }
     return render_template('module/main.html', module=module_info)
 
