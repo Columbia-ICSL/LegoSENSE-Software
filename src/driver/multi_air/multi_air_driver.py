@@ -19,10 +19,11 @@ class MultiAirModule(SensorHubModuleTemplate):
         print('MultiAirModule init')
         super().__init__(config_path, interface)
 
-        self.fs = float(self.get_config('Temperature Humidity', 'SamplingFrequency'))
-
         self.temp_hum = Pi_HDC2080(twi=interface.i2c_bus)
         self.temp_hum.readHumidity()
+
+    def setup_config(self):
+        self.fs = float(self.get_config('Temperature Humidity', 'SamplingFrequency'))
 
     def read(self, sensor):
         if sensor == 'TempHum':
