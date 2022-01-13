@@ -206,6 +206,18 @@ if __name__ == '__main__':
             assert module in ['Air Quality', 'Wind', 'Multi-purpose Air Sensor']
             return [sensor for sensor, idx in self.fake_slots[module]['sensors']]
 
+        def get_sensor_cols(self, module):
+            assert module in ['Air Quality', 'Wind', 'Multi-purpose Air Sensor']
+            sensor_cols = {
+                'Air Quality': {'PM Sensor': ['PM Sensor']},
+                'Wind': {'Wind Speed Sensor': ['Wind Speed Sensor']},
+                'Multi-purpose Air Sensor': {
+                    'CO2 Sensor': ['CO2 Sensor'],
+                    'Temperature & Humidity Sensor': ['Temperature & Humidity Sensor'],
+                    'Air Pressure Sensor': ['Air Pressure Sensor']
+                }
+            }
+            return sensor_cols[module]
 
     test_manager = _FakeModuleManager()
 
@@ -217,7 +229,7 @@ if __name__ == '__main__':
             t_window = list(np.linspace(time.time() - 1, time.time(), 10))
             data_window = list(map(lambda x: random.randint(0, 100), t_window))
             with server.app_context():
-                destination = f'{module}.{sensor}'
+                destination = f'{module}.{sensor}.{sensor}'
                 sse.publish({'time': t_window, 'data': data_window}, type=destination)
                 print(f'Published to {destination}')
             time.sleep(0.1)
