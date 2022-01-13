@@ -24,9 +24,10 @@ class ModuleWorker(Thread):
         module_driver = module.SensorHubModule
 
         self.module_sensors = module.SENSORS
+        self.sensor_cols = module.SENSORS_COLS
         self.sensor = dict()
         for i in self.module_sensors:
-            self.sensor[i] = f"Module {self.module}: {i}\n".encode()
+            self.sensor[i] = ('Time\t' + '\t'.join(self.sensor_cols[i]) + '\n').encode()
 
         self.interface = SensorHubInterface(slot)
         self.driver = module_driver(
@@ -38,18 +39,53 @@ class ModuleWorker(Thread):
         Thread.__init__(self)
         self.start()
 
+    def format_log(self, sensor, data):
+        # time_str = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
+        
+        if isinstance(data, str):
+            t = str(time.time())
+            return (t + '\t' + data + '\n').encode()
+        elif isinstance(data, dict):
+            for i in data.keys():
+                if i != '_t':
+                    assert i in self.sensor_cols[sensor], f'DriverError: Sensor column {i} must be declared in xModuleSensorsColumns!'
+            
+            ret = str(data['_t'])
+            for col in self.sensor_cols[sensor]:
+                if col in data.keys():
+                    ret += ('\t' + str(data[col]))
+                else:
+                    ret += '\t 0' # Data not available
+            return (ret + '\n').encode()
+
+    def handle_data(self, sensor, data):
+        with server.app_context():
+            t = data['_t']
+            del data['_t']
+            for col, value in data.items():
+                destination = f'{self.module}.{sensor}.{col}'
+                sse.publish({'time': [t], 'data': [value]}, type=destination)
+                print(f'Published to {destination}')
+
     def run(self):
         while self.active:
             # print(f'{self.module} working...')
-            timestr = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
             available_sensors = self.driver.wait_for_next_sample()
             assert isinstance(available_sensors, list), \
                 f'[{self.module}] DriverError: wait_for_next_sample must return list!'
             for i in available_sensors:
-                self.sensor[i] += (timestr + '\t' + self.driver.read(i)).encode()
+                read_data = self.driver.read(i)
+                self.sensor[i] += self.format_log(i, read_data)
+                if isinstance(read_data, dict):
+                    self.handle_data(i, read_data)
         # TODO: call driver's function to gracefully terminate
         print(f'{self.module} at {self.slot} terminated')
 
+    def publish(self, sensor, t_window, data_window):
+        with server.app_context():
+            destination = f'{self.module}.{sensor}'
+            sse.publish({'time': t_window, 'data': data_window}, type=destination)
+            print(f'Published to {destination}')
 
 # --------------- Web server to handle requests from seh start/... ---------------
 dashboard_root = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dashboard'), 'apps')
@@ -71,7 +107,7 @@ def index_page():
 
 
 @server.route('/data')
-def data():
+def data_page():
     return render_template('data/main.html', segment="data")
 
 
@@ -81,7 +117,8 @@ def module_details(module_name):
     module_info = {
         'name': module_name,
         'settings': manager.get_module_config(module_name),
-        'sensors': manager.get_sensors(module_name)
+        'sensors': manager.get_sensors(module_name),
+        'sensor_cols': manager.get_sensor_cols(module_name)
     }
     return render_template('module/main.html', module=module_info)
 

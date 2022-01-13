@@ -8,7 +8,11 @@ from driver.driver_template import SensorHubModuleTemplate
 from driver.multi_air.hdc2080 import Pi_HDC2080
 
 MultiAirModuleSensors = ['airQua', 'TempHum', 'CO2']
-
+MultiAirModuleSensorsColumns = {
+    'airQua': ['Air Quality'],
+    'TempHum': ['Temperature', 'Humidity'],
+    'CO2': ['CO2 Density']
+}
 
 class MultiAirModule(SensorHubModuleTemplate):
     def __init__(self, config_path, interface):
@@ -22,9 +26,10 @@ class MultiAirModule(SensorHubModuleTemplate):
 
     def read(self, sensor):
         if sensor == 'TempHum':
-            hum = self.temp_hum.readHumidity()
-            tem = self.temp_hum.readTemperature()
-            return f'{tem:.2f}\t{hum:.2f}\n'
+            tem = round(self.temp_hum.readTemperature(), 2)
+            hum = round(self.temp_hum.readHumidity(), 2)
+            # TODO: move this formatting into template
+            return {'_t': time.time(), 'Temperature': tem, 'Humidity': hum}
         else:
             return f'{sensor}: not implemented'
 
