@@ -7,13 +7,17 @@ sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpat
 from driver.driver_template import SensorHubModuleTemplate
 
 ExampleSensors = ['Sensor A', 'Sensor B']
-
+ExampleSensorsProperties = {
+    'Sensor A': ['A-1', 'A-2'],
+    'Sensor B': ['B-1']
+}
 
 class ExampleModule(SensorHubModuleTemplate):
     def __init__(self, config_path, interface):
-        self.config = ConfigParser()
-        self.config.read(config_path)
+        super().__init__(config_path, interface)
+        print('ExampleModule init')
 
+    def setup_config(self):
         self.fs = {
             'Sensor A': self.config['Sensor A'].getfloat('SamplingFrequency'),
             'Sensor B': self.config['Sensor B'].getfloat('SamplingFrequency')
@@ -24,9 +28,6 @@ class ExampleModule(SensorHubModuleTemplate):
             'Sensor B': time.time()
         }
 
-        print('ExampleModule init')
-        super().__init__(config_path, interface)
-
     def _calc_next_sched(self, sensor):
         assert sensor in self.fs.keys()
         assert sensor in self.next_sched.keys()
@@ -36,11 +37,11 @@ class ExampleModule(SensorHubModuleTemplate):
         if sensor == 'Sensor A':
             value_a = time.time() * 10 % 100
             value_b = time.time() % 10
-            return f'{value_a:.2f}\t{value_b:.2f}\n'
+            return {'_t': time.time(), 'A-1': value_a, 'A-2': value_b}
         elif sensor == 'Sensor B':
             value_a = 50 + time.time() * 10 % 100
             value_b = 5 + time.time() % 10
-            return f'{value_a:.2f}\t{value_b:.2f}\n'
+            return {'_t': time.time(), 'B-1': value_a}
         else:
             return f'{sensor}: not implemented'
 

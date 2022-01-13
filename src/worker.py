@@ -65,7 +65,7 @@ class ModuleWorker(Thread):
             for col, value in data.items():
                 destination = f'{self.module}.{sensor}.{col}'
                 sse.publish({'time': [t], 'data': [value]}, type=destination)
-                print(f'Published to {destination}')
+                # print(f'Published to {destination}')
 
     def run(self):
         while self.active:
@@ -81,11 +81,6 @@ class ModuleWorker(Thread):
         # TODO: call driver's function to gracefully terminate
         print(f'{self.module} at {self.slot} terminated')
 
-    def publish(self, sensor, t_window, data_window):
-        with server.app_context():
-            destination = f'{self.module}.{sensor}'
-            sse.publish({'time': t_window, 'data': data_window}, type=destination)
-            print(f'Published to {destination}')
 
 # --------------- Web server to handle requests from seh start/... ---------------
 dashboard_root = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dashboard'), 'apps')
@@ -161,8 +156,10 @@ def seh_reload_system():
 
 @server.route('/update_settings', methods=['POST'])
 def update_settings():
+    module = request.headers['Module-Name']
     sensor = request.headers['Sensor-Name']
     new_config = request.json
+    manager.set_module_config(module, sensor, new_config)
     return jsonify({'status': 'OK', 'msg': f'{sensor} configurations saved'})
 
 
