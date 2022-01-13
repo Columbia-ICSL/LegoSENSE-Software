@@ -4,7 +4,7 @@ import time
 import datetime
 import importlib
 from threading import Thread
-from flask import Flask, make_response, render_template
+from flask import Flask, make_response, render_template, request, jsonify
 from flask_sse import sse
 # from gevent.pywsgi import WSGIServer
 from config import WEB_SERVER_PORT
@@ -159,6 +159,13 @@ def seh_reload_system():
         return make_response(response['err_msg']), 500
 
 
+@server.route('/update_settings', methods=['POST'])
+def update_settings():
+    sensor = request.headers['Sensor-Name']
+    new_config = request.json
+    return jsonify({'status': 'OK', 'msg': f'{sensor} configurations saved'})
+
+
 def start_web_server(module_manager):
     global manager
     manager = module_manager
@@ -231,7 +238,7 @@ if __name__ == '__main__':
             with server.app_context():
                 destination = f'{module}.{sensor}.{sensor}'
                 sse.publish({'time': t_window, 'data': data_window}, type=destination)
-                print(f'Published to {destination}')
+                # print(f'Published to {destination}')
             time.sleep(0.1)
 
     threading.Thread(target=fake_data_worker, daemon=True).start()
