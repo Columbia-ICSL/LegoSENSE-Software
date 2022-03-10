@@ -3,6 +3,7 @@ from smbus2 import SMBus
 import logging
 from threading import Thread, Lock
 
+from eeprom import EEPROM
 
 class TCA9548A(object):
     # Modified from https://github.com/IRNAS/tca9548a-python/blob/master/tca9548a.py
@@ -73,8 +74,9 @@ class TCA9548A(object):
 
 
 class EEP(object):
+    EEP_BUS = 1
     def __init__(self, lock=None, eep_addr=0x50):
-        self.slots_taken = [False, False, False, False]
+        self.slots_taken = [None, None, None, None]
         self.lock = lock if lock is not None else Lock()
         self.eep_addr = eep_addr
 
@@ -95,7 +97,9 @@ class EEP(object):
                 self.mux.set_channel(i, 1)
                 self.lock.release()
                 
-                time.sleep(0.2)
+                # First run: quick scan no delay
+                if self.slots_taken[i] is not None:
+                    time.sleep(0.2)
                 self.lock.acquire()
                 try:
                     self.eep_bus.read_byte(self.eep_addr)
@@ -111,6 +115,49 @@ class EEP(object):
     def get_status(self):
         assert self.status_thread.is_alive(), 'Error: scan_eep thread is dead!'
         return self.slots_taken
+
+    def write_eep(self, idx, val, check_integrity=True):
+        assert 1 <= idx <= 4, f'Slots must be between 1 and 4: got {idx}'
+        # 2Kb EEPROM = 2048 bits = 256 bytes. Use 1st byte for length - max len 255 bytes
+        assert len(val) <= 255, f'Data trying to write will not fit in 2Kb EEPROM!'
+        assert self.slots_taken[idx-1], f'Daughterboard / EEPROM not detected on slot {idx}'
+
+        to_write = b''
+        to_write += len(val).to_bytes(1, 'big')
+        to_write += val.encode('ascii')
+        
+        self.lock.acquire()
+        self.mux.set_control_register(0b00000000)  # disable all
+        self.mux.set_channel(idx-1, 1)
+        self.lock.release()
+
+        self.lock.acquire()
+        eeprom = EEPROM("24c02", self.EEP_BUS, self.eep_addr)
+        eeprom.write(to_write)
+        self.lock.release()
+
+        # if check_integrity:
+        #     readback = self.read_eep(idx)
+        #     assert to_write == readback, f'Written ->{to_write}<-, got ->{readback}<-'
+    
+    def read_eep(self, idx):
+        assert 1 <= idx <= 4, f'Slots must be between 1 and 4: got {idx}'
+        assert self.slots_taken[idx-1], f'Daughterboard / EEPROM not detected on slot {idx}'
+
+        self.lock.acquire()
+        self.mux.set_control_register(0b00000000)  # disable all
+        self.mux.set_channel(idx-1, 1)
+        self.lock.release()
+
+        self.lock.acquire()
+        eeprom = EEPROM("24c02", self.EEP_BUS, self.eep_addr)
+        data_length = int.from_bytes(eeprom.read(size=1, addr=0), "big")
+        assert 0 <= data_length <= 255
+        data = eeprom.read(size=data_length, addr=1)
+        self.lock.release()
+        
+        print(f'Data length={data_length}, data={data}')
+        return data
 
 
 if __name__ == "__main__":
