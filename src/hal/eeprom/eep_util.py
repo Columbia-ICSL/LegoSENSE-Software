@@ -77,6 +77,7 @@ class EEP(object):
     EEP_BUS = 1
     def __init__(self, lock=None, eep_addr=0x50):
         self.slots_taken = [None, None, None, None]
+        self.module_names = {1: "", 2: "", 3: "", 4: ""}
         self.lock = lock if lock is not None else Lock()
         self.eep_addr = eep_addr
 
@@ -105,16 +106,19 @@ class EEP(object):
                     self.eep_bus.read_byte(self.eep_addr)
                     self.lock.release()
                     self.slots_taken[i] = True
+                    module_name = self.read_eep(i+1)
+                    self.module_names[i+1] = "UnrecognizedModule" if module_name is None else module_name.decode()
                 except KeyboardInterrupt:
                     self.lock.release()
                     exit(1)
                 except OSError: # error name
                     self.lock.release()
                     self.slots_taken[i] = False
+                    self.module_names[i+1] = ""
     
     def get_status(self):
         assert self.status_thread.is_alive(), 'Error: scan_eep thread is dead!'
-        return self.slots_taken
+        return self.slots_taken, self.module_names
 
     def write_eep(self, idx, val, check_integrity=True):
         assert 1 <= idx <= 4, f'Slots must be between 1 and 4: got {idx}'
@@ -156,7 +160,9 @@ class EEP(object):
         data = eeprom.read(size=data_length, addr=1)
         self.lock.release()
         
-        print(f'Data length={data_length}, data={data}')
+        # print(f'Data length={data_length}, data={data}')
+        if data_length == 255 and 0xFF in data:  # Uninitialized EEPROM
+            return None
         return data
 
 
