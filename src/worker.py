@@ -37,7 +37,7 @@ class ModuleWorker(Thread):
         for i in self.module_sensors:
             self.sensor[i] = ('Time\t' + '\t'.join(self.sensor_cols[i]) + '\n').encode()
 
-        self.interface = SensorHubInterface(slot)
+        self.interface = SensorHubInterface(f'slot{slot}')
         self.driver = module_driver(
             config_path=os.path.join(DRIVER_PATH, module_name, 'config.ini'),
             interface=self.interface
@@ -91,20 +91,23 @@ class ModuleWorker(Thread):
 
 
 class PlugAndPlayWorker(Thread):
-    def __init__(self):
+    def __init__(self, on_update_cb=None):
         self.eep = EEP()
-
+        self.connected_modules = {}
+        self.on_update_cb = on_update_cb
         self.active = True
         Thread.__init__(self)
         self.start()
 
     def run(self):
-        _, connected_modules = self.eep.get_status()
-        last_connected_modules = connected_modules.copy()
+        _, self.connected_modules = self.eep.get_status()
+        last_connected_modules = self.connected_modules.copy()
         while self.active:
             time.sleep(0.5)
-            _, connected_modules = self.eep.get_status()
-            if connected_modules != last_connected_modules:
+            _, self.connected_modules = self.eep.get_status()
+            if self.connected_modules != last_connected_modules:
+                if self.on_update_cb is not None:
+                    self.on_update_cb()
                 with server.app_context():
                     destination = f'dashboard_events'
                     sse.publish({
@@ -113,7 +116,7 @@ class PlugAndPlayWorker(Thread):
                         'alert': 'Module XX connected!',
                     }, type=destination)
                     # print(f'Published to {destination}')
-                last_connected_modules = connected_modules.copy()
+                last_connected_modules = self.connected_modules.copy()
 
 
 # --------------- Web server to handle requests from seh start/... ---------------

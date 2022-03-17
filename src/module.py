@@ -1,4 +1,5 @@
 import re
+import time
 import importlib
 import config
 from worker import ModuleWorker, PlugAndPlayWorker, start_web_server
@@ -6,9 +7,11 @@ from worker import ModuleWorker, PlugAndPlayWorker, start_web_server
 
 class SensorHubModuleManager:
     def __init__(self):
-        self.installed_modules = config.INSTALLED_MODULES
         self.modules_worker = dict()
-        self.util_worker = []
+        self.modules_detector = PlugAndPlayWorker(self.reload)
+        self.installed_modules = self.modules_detector.connected_modules
+        time.sleep(0.5) # Wait for EEPROM to refresh
+        print(self.installed_modules)
         self.start_workers()
         start_web_server(self)
 
@@ -19,7 +22,6 @@ class SensorHubModuleManager:
         for slot, module in self.installed_modules.items():
             if module != '':
                 self.modules_worker[module] = ModuleWorker(module, slot)
-        self.util_worker.append(PlugAndPlayWorker())
 
     def stop_workers(self):
         print('Stopping sensor workers....')
@@ -46,11 +48,9 @@ class SensorHubModuleManager:
         for slot_name, module_name in self.installed_modules.items():
             module = dict()
             if module_name != '':
-                slot_number = re.findall(r'slot(\d+)', slot_name)
-                assert len(slot_number) == 1, f'Unable to parse slot number from "{slot_name}"!'
                 sensors = self.get_sensors(module_name)
                 assert len(sensors) > 0, f'DriverError: Module "{module_name}" has empty list of sensors!'
-                module['slot'] = int(slot_number[0])
+                module['slot'] = slot_name
                 module['name'] = module_name
                 module['sensors'] = zip(sensors, list(range(len(sensors))))
                 modules.append(module)
@@ -83,11 +83,6 @@ class SensorHubModuleManager:
     # ================================================================================
     def reload(self):
         self.stop_workers()
-
-        # Reload config
-        importlib.reload(config)
-        self.installed_modules = config.INSTALLED_MODULES
-
         self.start_workers()
         return {'ok': True, 'err_msg': ''}
 

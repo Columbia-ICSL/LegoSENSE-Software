@@ -3,7 +3,7 @@ from smbus2 import SMBus
 import logging
 from threading import Thread, Lock
 
-from eeprom import EEPROM
+from hal.eeprom.eeprom import EEPROM
 
 class TCA9548A(object):
     # Modified from https://github.com/IRNAS/tca9548a-python/blob/master/tca9548a.py
