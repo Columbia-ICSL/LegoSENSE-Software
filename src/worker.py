@@ -10,6 +10,14 @@ from flask_sse import sse
 from config import WEB_SERVER_PORT
 from hal.interface import SensorHubInterface
 
+import platform
+IS_RPI = platform.machine() == 'armv7l'
+
+if IS_RPI:
+    from hal.eeprom.eep_util import EEP
+else:
+    from hal.simulated.eep_sim import EEPSimulated as EEP
+
 DRIVER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'driver')
 
 
@@ -80,6 +88,32 @@ class ModuleWorker(Thread):
                     self.handle_data(i, read_data)
         # TODO: call driver's function to gracefully terminate
         print(f'{self.module} at {self.slot} terminated')
+
+
+class PlugAndPlayWorker(Thread):
+    def __init__(self):
+        self.eep = EEP()
+
+        self.active = True
+        Thread.__init__(self)
+        self.start()
+
+    def run(self):
+        _, connected_modules = self.eep.get_status()
+        last_connected_modules = connected_modules.copy()
+        while self.active:
+            time.sleep(0.5)
+            _, connected_modules = self.eep.get_status()
+            if connected_modules != last_connected_modules:
+                with server.app_context():
+                    destination = f'dashboard_events'
+                    sse.publish({
+                        'type': 'module_list_changed',
+                        'action': ['alert_then_refresh'],
+                        'alert': 'Module XX connected!',
+                    }, type=destination)
+                    # print(f'Published to {destination}')
+                last_connected_modules = connected_modules.copy()
 
 
 # --------------- Web server to handle requests from seh start/... ---------------
@@ -239,4 +273,5 @@ if __name__ == '__main__':
             time.sleep(0.1)
 
     threading.Thread(target=fake_data_worker, daemon=True).start()
+    PlugAndPlayWorker()
     start_web_server(test_manager)

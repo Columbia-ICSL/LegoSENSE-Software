@@ -1,13 +1,14 @@
 import re
 import importlib
 import config
-from worker import ModuleWorker, start_web_server
+from worker import ModuleWorker, PlugAndPlayWorker, start_web_server
 
 
 class SensorHubModuleManager:
     def __init__(self):
         self.installed_modules = config.INSTALLED_MODULES
         self.modules_worker = dict()
+        self.util_worker = []
         self.start_workers()
         start_web_server(self)
 
@@ -18,6 +19,7 @@ class SensorHubModuleManager:
         for slot, module in self.installed_modules.items():
             if module != '':
                 self.modules_worker[module] = ModuleWorker(module, slot)
+        self.util_worker.append(PlugAndPlayWorker())
 
     def stop_workers(self):
         print('Stopping sensor workers....')
