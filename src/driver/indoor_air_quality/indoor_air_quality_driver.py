@@ -1,8 +1,10 @@
 import os
 import sys
 import time
+import traceback
 
 sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
+err_log_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'err.log')
 from driver.driver_template import SensorHubModuleTemplate
 
 # >>>>>>>>>> Fill in imports >>>>>>>>>>
@@ -37,8 +39,16 @@ class IndoorAirQualityModule(SensorHubModuleTemplate):
     def read(self, sensor):
         # >>>>>>>>>> Fill in reading values >>>>>>>>>>
         if sensor == 'Indoor Air Quality':
-            result = self.sgp30.get_air_quality()
-            return {'_t': time.time(), 'CO2': result.equivalent_co2, 'VOC': result.total_voc}
+            try:
+                result = self.sgp30.get_air_quality()
+                return {'_t': time.time(), 'CO2': result.equivalent_co2, 'VOC': result.total_voc}
+            except:
+                with open(err_log_path, 'a') as f:
+                    f.write(str(time.time()) + '\n' + traceback.format_exc() + '\n')
+                traceback.print_exc()
+                print("Waiting 2 sec before continuing")
+                time.sleep(2)
+                return {'_t': time.time(), 'CO2': -1, 'VOC': -1}
         # <<<<<<<<<< Fill in reading values <<<<<<<<<<
         else:
             return f'{sensor}: not implemented'

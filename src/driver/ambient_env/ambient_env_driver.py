@@ -1,8 +1,10 @@
 import os
 import sys
 import time
+import traceback
 
 sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
+err_log_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'err.log')
 from driver.driver_template import SensorHubModuleTemplate
 
 # >>>>>>>>>> Fill in imports >>>>>>>>>>
@@ -38,11 +40,27 @@ class AmbientEnvModule(SensorHubModuleTemplate):
     def read(self, sensor):
         # >>>>>>>>>> Fill in reading values >>>>>>>>>>
         if sensor == 'temp_hum':
-            temperature = self.temp_hum.get_temperature()
-            humidity = self.temp_hum.get_humidity()
-            return {'_t': time.time(), 'Temperature': temperature, 'Humidity': humidity}
+            try:
+                temperature = self.temp_hum.get_temperature()
+                humidity = self.temp_hum.get_humidity()
+                return {'_t': time.time(), 'Temperature': temperature, 'Humidity': humidity}
+            except:
+                with open(err_log_path, 'a') as f:
+                    f.write(str(time.time()) + '\n' + traceback.format_exc() + '\n')
+                traceback.print_exc()
+                print("Waiting 2 sec before continuing")
+                time.sleep(2)
+                return {'_t': time.time(), 'Temperature': -1, 'Humidity': -1}
         elif sensor == 'pressure':
-            return {'_t': time.time(), 'Pressure': self.pressure.get_pressure()}
+            try:
+                return {'_t': time.time(), 'Pressure': self.pressure.get_pressure()}
+            except:
+                with open(err_log_path, 'a') as f:
+                    f.write(str(time.time()) + '\n' + traceback.format_exc() + '\n')
+                traceback.print_exc()
+                print("Waiting 2 sec before continuing")
+                time.sleep(2)
+                return {'_t': time.time(), 'Pressure': -1}
         # <<<<<<<<<< Fill in reading values <<<<<<<<<<
         else:
             return f'{sensor}: not implemented'

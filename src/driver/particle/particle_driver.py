@@ -1,8 +1,10 @@
 import os
 import sys
 import time
+import traceback
 
 sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
+err_log_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'err.log')
 from driver.driver_template import SensorHubModuleTemplate
 
 # >>>>>>>>>> Fill in imports >>>>>>>>>>
@@ -41,13 +43,26 @@ class ParticleModule(SensorHubModuleTemplate):
     def read(self, sensor):
         # >>>>>>>>>> Fill in reading values >>>>>>>>>>
         if sensor == 'Particle Matter':
-            data = self.pms5003.read()
-            ret = dict(zip(
-                ["PM1.0_ultrafine","PM2.5_combustion_particles__organic_compounds__metals","PM10__dust__pollen__mould_spores","PM1.0_atoms_env","PM2.5_atoms_env","PM10_atoms_env","LT0.3um","LT0.5um","LT1.0um","LT2.5um","LT5.0um","LT10um"],
-                data.data[:-2]
-            ))
-            ret['_t'] = time.time()
-            return ret
+            try:
+                data = self.pms5003.read()
+                ret = dict(zip(
+                    ["PM1.0_ultrafine","PM2.5_combustion_particles__organic_compounds__metals","PM10__dust__pollen__mould_spores","PM1.0_atoms_env","PM2.5_atoms_env","PM10_atoms_env","LT0.3um","LT0.5um","LT1.0um","LT2.5um","LT5.0um","LT10um"],
+                    data.data[:-2]
+                ))
+                ret['_t'] = time.time()
+                return ret
+            except:
+                with open(err_log_path, 'a') as f:
+                    f.write(str(time.time()) + '\n' + traceback.format_exc() + '\n')
+                traceback.print_exc()
+                print("Waiting 2 sec before continuing")
+                time.sleep(2)
+                ret = dict(zip(
+                    ["PM1.0_ultrafine","PM2.5_combustion_particles__organic_compounds__metals","PM10__dust__pollen__mould_spores","PM1.0_atoms_env","PM2.5_atoms_env","PM10_atoms_env","LT0.3um","LT0.5um","LT1.0um","LT2.5um","LT5.0um","LT10um"],
+                    [-1] * 12
+                ))
+                ret['_t'] = time.time()
+                return ret
         # <<<<<<<<<< Fill in reading values <<<<<<<<<<
         else:
             return f'{sensor}: not implemented'
