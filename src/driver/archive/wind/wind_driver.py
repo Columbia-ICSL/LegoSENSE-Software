@@ -5,7 +5,7 @@ import time
 sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
 from driver.driver_template import SensorHubModuleTemplate
 
-from driver.wind.wind import ADS1115, i2c_driver
+from archive.wind.wind import ADS1115, i2c_driver
 
 WindModuleSensors = ['wind']
 WindModuleSensorsColumns = {

@@ -31,8 +31,8 @@ class ModuleWorker(Thread):
         module = importlib.import_module(f'driver.{module_name}')
         module_driver = module.SensorHubModule
 
-        self.module_sensors = module.SENSORS
-        self.sensor_cols = module.SENSORS_COLS
+        self.module_sensors = module_driver.SENSORS
+        self.sensor_cols = module_driver.SENSORS_COLS
         self.sensor = dict()
         for i in self.module_sensors:
             self.sensor[i] = ('Time\t' + '\t'.join(self.sensor_cols[i]) + '\n').encode()
@@ -113,7 +113,7 @@ class PlugAndPlayWorker(Thread):
                     sse.publish({
                         'type': 'module_list_changed',
                         'action': ['alert_then_refresh'],
-                        'alert': 'Module XX connected!',
+                        'alert': 'Attached modules changed!',
                     }, type=destination)
                     # print(f'Published to {destination}')
                 last_connected_modules = self.connected_modules.copy()

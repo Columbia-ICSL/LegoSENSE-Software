@@ -5,7 +5,7 @@ import time
 sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
 from driver.driver_template import SensorHubModuleTemplate
 
-from driver.multi_air.hdc2080 import Pi_HDC2080
+from archive.multi_air.hdc2080 import Pi_HDC2080
 
 MultiAirModuleSensors = ['airQua', 'TempHum', 'CO2']
 MultiAirModuleSensorsColumns = {

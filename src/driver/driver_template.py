@@ -6,9 +6,15 @@ from configparser import ConfigParser
 
 
 class SensorHubModuleTemplate:
+    SENSORS = []
+    SENSORS_COLS = {
+
+    }
+
     def __init__(self, config_path, interface):
         # TODO: Add lock
         print(f'I2C Bus: {interface.i2c_bus}')
+        print(f'UART : {interface.uart}')
 
         self.config_path = config_path
         self.config = ConfigParser()

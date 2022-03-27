@@ -12,7 +12,14 @@ ExampleSensorsProperties = {
     'Sensor B': ['B-1']
 }
 
+
 class ExampleModule(SensorHubModuleTemplate):
+    SENSORS = ['Sensor A', 'Sensor B']
+    SENSORS_COLS = {
+        'Sensor A': ['A-1', 'A-2'],
+        'Sensor B': ['B-1']
+    }
+
     def __init__(self, config_path, interface):
         super().__init__(config_path, interface)
         print('ExampleModule init')
@@ -35,13 +42,12 @@ class ExampleModule(SensorHubModuleTemplate):
 
     def read(self, sensor):
         if sensor == 'Sensor A':
-            value_a = time.time() * 10 % 100
-            value_b = time.time() % 10
-            return {'_t': time.time(), 'A-1': value_a, 'A-2': value_b}
+            rand1 = time.time() * 10 % 100
+            rand2 = time.time() % 10
+            return {'_t': time.time(), 'A-1': rand1, 'A-2': rand2}
         elif sensor == 'Sensor B':
-            value_a = 50 + time.time() * 10 % 100
-            value_b = 5 + time.time() % 10
-            return {'_t': time.time(), 'B-1': value_a}
+            rand1 = 50 + time.time() * 10 % 100
+            return {'_t': time.time(), 'B-1': rand1}
         else:
             return f'{sensor}: not implemented'
 
