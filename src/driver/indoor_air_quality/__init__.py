@@ -1,0 +1,1 @@
+from driver.indoor_air_quality.indoor_air_quality_driver import IndoorAirQualityModule as SensorHubModule
