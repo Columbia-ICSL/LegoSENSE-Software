@@ -31,6 +31,7 @@ class ParticleModule(SensorHubModuleTemplate):
             pin_reset=interface.pin_rst
         )
         # <<<<<<<<<< Fill in driver initializations <<<<<<<<<<
+        print('ParticleModule init done')
 
     def setup_config(self):
         # >>>>>>>>>> Fill in configuration setups >>>>>>>>>>

@@ -28,6 +28,7 @@ class AmbientEnvModule(SensorHubModuleTemplate):
         self.temp_hum = AHT20(bus=interface.i2c_bus)
         self.pressure = SPL06(bus=interface.i2c_bus)
         # <<<<<<<<<< Fill in driver initializations <<<<<<<<<<
+        print('AmbientEnv init done')
 
     def setup_config(self):
         # >>>>>>>>>> Fill in configuration setups >>>>>>>>>>
