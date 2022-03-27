@@ -3,8 +3,10 @@ import sys
 # sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
 import time
 from smbus2 import SMBus
-from hal.adc.ads1115 import ADS1115
-# from ads1115 import ADS1115
+try:
+    from hal.adc.ads1115 import ADS1115
+except:
+    from ads1115 import ADS1115
 
 class i2c_driver:
     def __init__(self, bus):
@@ -34,8 +36,8 @@ class SensorHubADC():
         self.adc_2.start_adc(0, gain=(2/3))
         self.adc_mapping = {
             1: {0: (self.adc_1, 0), 1: (self.adc_1, 1)},
-            2: {0: (self.adc_1, 2), 1: (self.adc_1, 3)},
-            3: {0: (self.adc_2, 0), 1: (self.adc_2, 1)},
+            2: {0: (self.adc_2, 0), 1: (self.adc_2, 1)},
+            3: {0: (self.adc_1, 2), 1: (self.adc_1, 3)},
             4: {0: (self.adc_2, 2), 1: (self.adc_2, 3)}
         }
     
@@ -43,7 +45,7 @@ class SensorHubADC():
         assert module in [1, 2, 3, 4], f'Module number must be in [1, 2, 3, 4]'
         assert channel in [0, 1], f'Channel index must be in [0, 1]'
         adc, ch = self.adc_mapping[module][channel]
-        return (adc.read_adc(channel, gain=(2/3)) / 32768) * 6.144
+        return (adc.read_adc(ch, gain=(2/3)) / 32768) * 6.144
 
 
 if __name__ == "__main__":
