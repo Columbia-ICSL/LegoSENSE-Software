@@ -1,9 +1,14 @@
+import os
+import sys
+# sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))
 import time
 from smbus2 import SMBus
-from ads1115 import ADS1115
+from hal.adc.ads1115 import ADS1115
+# from ads1115 import ADS1115
 
 class i2c_driver:
     def __init__(self, bus):
+        print("ADC INIT!!!!!!!!!!")
         self.bus = bus
         self.address = None
         pass

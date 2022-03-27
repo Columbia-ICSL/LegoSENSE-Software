@@ -1,3 +1,8 @@
+import os
+import sys
+sys.path.append(os.path.dirname((os.path.dirname(os.path.realpath(__file__)))))
+from hal.adc.adc import SensorHubADC
+
 def get_i2c_bus(slot):
     if slot in ['slot1', 'slot2']:
         return 1
@@ -20,10 +25,20 @@ def get_uart(slot):
         # GPIO 12, 13 -- ALT4 -- UAR5
         return '/dev/ttyAMA3'
 
+def get_reset(slot):
+    if slot == 'slot1':
+        return 24
+    elif slot == 'slot2':
+        return 25
+    elif slot == 'slot3':
+        return 26
+    elif slot == 'slot4':
+        return 27
 
 class SensorHubInterface:
     def __init__(self, slot):
         self.slot = slot
+        self.adc = SensorHubADC()
 
     @property
     def i2c_bus(self):
@@ -32,3 +47,11 @@ class SensorHubInterface:
     @property
     def uart(self):
         return get_uart(self.slot)
+
+    @property
+    def pin_rst(self):
+        return get_reset(self.slot)
+
+    def read_adc(self, channel):
+        assert channel in [0, 1]
+        return self.adc.read(int(self.slot[-1]), channel)
