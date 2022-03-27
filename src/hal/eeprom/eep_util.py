@@ -3,7 +3,10 @@ from smbus2 import SMBus
 import logging
 from threading import Thread, Lock
 
-from hal.eeprom.eeprom import EEPROM
+try:
+    from hal.eeprom.eeprom import EEPROM
+except:
+    from eeprom import EEPROM
 
 class TCA9548A(object):
     # Modified from https://github.com/IRNAS/tca9548a-python/blob/master/tca9548a.py
@@ -112,6 +115,10 @@ class EEP(object):
                     self.lock.release()
                     exit(1)
                 except OSError: # error name
+                    self.lock.release()
+                    self.slots_taken[i] = False
+                    self.module_names[i+1] = ""
+                except ValueError: # ValueError: I2C device not exist on: 0x50
                     self.lock.release()
                     self.slots_taken[i] = False
                     self.module_names[i+1] = ""
