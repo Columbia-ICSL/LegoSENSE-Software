@@ -19,6 +19,13 @@ else:
     from hal.simulated.eep_sim import EEPSimulated as EEP
 
 DRIVER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'driver')
+LOG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'log')
+if not os.path.exists(LOG_FOLDER):
+    try:
+        original_umask = os.umask(0)
+        os.makedirs(LOG_FOLDER, 0o777)
+    finally:
+        os.umask(original_umask)
 
 
 class ModuleWorker(Thread):
@@ -43,9 +50,27 @@ class ModuleWorker(Thread):
             interface=self.interface
             )
 
+        self.csv_log_path = os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"%y%m%d_%H%M%S_{module_name}.csv"))
+        log_header = ["Epoch Time"]
+        self.log_index = {}
+        self.total_log_cols = 1
+        for sensor, cols in self.sensor_cols.items():
+            self.log_index[sensor] = dict(zip(cols, list(range(self.total_log_cols, self.total_log_cols+len(cols)))))
+            self.total_log_cols += len(cols)
+            log_header.extend([f'{sensor}_{i}' for i in cols])
+        self.write_csv_from_list(log_header)
+
         self.active = True
         Thread.__init__(self)
         self.start()
+
+    def write_csv_from_list(self, data):
+        assert isinstance(data, list)
+        assert all([isinstance(i, str) for i in data])
+        with open(self.csv_log_path, 'a') as f:
+            out_data = ','.join(data)
+            out_data += '\n'
+            f.write(out_data)
 
     def format_log(self, sensor, data):
         # time_str = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
@@ -67,6 +92,7 @@ class ModuleWorker(Thread):
             return (ret + '\n').encode()
 
     def handle_data(self, sensor, data):
+        self.save_log(sensor, data)
         with server.app_context():
             t = data['_t']
             del data['_t']
@@ -74,6 +100,17 @@ class ModuleWorker(Thread):
                 destination = f'{self.module}.{sensor}.{col}'
                 sse.publish({'time': [t], 'data': [value]}, type=destination)
                 # print(f'Published to {destination}')
+
+    def save_log(self, sensor, data):
+        log_cols = ["" for i in range(self.total_log_cols)]
+        log_cols[0] = str(data['_t'])
+        for col, col_data in data.items():
+            if col == '_t':
+                continue
+            idx = self.log_index[sensor][col]
+            log_cols[idx] = str(col_data)
+        self.write_csv_from_list(log_cols)
+        
 
     def run(self):
         while self.active:
