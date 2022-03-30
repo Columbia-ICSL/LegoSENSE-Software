@@ -28,7 +28,12 @@ class SensorHubFSInterface(fuse.Operations):
         stat_keys = ('st_atime', 'st_ctime', 'st_gid', 'st_mode',
                      'st_mtime', 'st_nlink', 'st_size', 'st_uid')
 
-        return dict((key, getattr(stat_result, key)) for key in stat_keys)
+        ret = dict((key, getattr(stat_result, key)) for key in stat_keys)
+        
+        # Hardcode owner to pi
+        ret['st_gid'] = 1000
+        ret['st_uid'] = 1000
+        return ret
 
     def _parse_path(self, path):
         # valid path: /<module>/<sensor>
@@ -104,7 +109,7 @@ def start_fuse(mount_point):
     # FIXME: HACK: manager has to be in this function for its __del__ to work properly at program termination
     manager = SensorHubModuleManager()
     fs_interface = SensorHubFSInterface(manager)
-    fuse.FUSE(fs_interface, mount_point, nothreads=False, foreground=True)
+    fuse.FUSE(fs_interface, mount_point, nothreads=False, foreground=True, **{'allow_other': True})
 
 
 if __name__ == '__main__':
