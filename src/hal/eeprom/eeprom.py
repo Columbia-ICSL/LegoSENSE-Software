@@ -108,7 +108,8 @@ class EEPROM():
             self._create_device()
         for i in range(5):
             if not os.path.isfile(os.path.join(self._devdir, 'eeprom')):
-                print("eeprom file not found.. retrying in 200ms")
+                # This will always trigger once the first time _create_device is called after boot
+                # print("eeprom file not found.. retrying in 200ms")
                 time.sleep(0.2)
             break
         if not os.path.isfile(os.path.join(self._devdir, 'eeprom')):
