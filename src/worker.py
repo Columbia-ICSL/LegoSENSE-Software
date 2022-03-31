@@ -9,6 +9,7 @@ from flask_sse import sse
 # from gevent.pywsgi import WSGIServer
 from config import WEB_SERVER_PORT
 from hal.interface import SensorHubInterface
+from log_util import get_logger
 
 import platform
 IS_RPI = platform.machine() == 'armv7l'
@@ -31,7 +32,8 @@ if not os.path.exists(LOG_FOLDER):
 class ModuleWorker(Thread):
     def __init__(self, module_name, slot):
         assert isinstance(module_name, str)
-        print(f"{module_name} init at {slot}")
+        self.logger = get_logger(f'Worker-M{slot}({module_name})')
+        self.logger.info(f"Init")
 
         self.module = module_name
         self.slot = slot
@@ -124,11 +126,13 @@ class ModuleWorker(Thread):
                 if isinstance(read_data, dict):
                     self.handle_data(i, read_data)
         # TODO: call driver's function to gracefully terminate
-        print(f'{self.module} at {self.slot} terminated')
+        self.logger.info(f'Terminated')
 
 
 class PlugAndPlayWorker(Thread):
     def __init__(self, on_update_cb=None):
+        self.logger = get_logger('PnP')
+        self.logger.info('Init')
         self.eep = EEP()
         self.connected_modules = {}
         self.on_update_cb = on_update_cb
@@ -137,12 +141,14 @@ class PlugAndPlayWorker(Thread):
         self.start()
 
     def run(self):
+        time.sleep(0.1) # FIXME: change to pipe. Wait for EEPROM to refresh
         _, self.connected_modules = self.eep.get_status()
         last_connected_modules = self.connected_modules.copy()
         while self.active:
             time.sleep(0.5)
             _, self.connected_modules = self.eep.get_status()
             if self.connected_modules != last_connected_modules:
+                self.logger.debug(f'Module update! {last_connected_modules} -> {self.connected_modules}')
                 if self.on_update_cb is not None:
                     self.on_update_cb()
                 with server.app_context():

@@ -3,17 +3,21 @@ import time
 import importlib
 import config
 from worker import ModuleWorker, PlugAndPlayWorker, start_web_server
-
+from log_util import get_logger
+logger = get_logger('ModuleManager')
 
 class SensorHubModuleManager:
     def __init__(self):
+        logger.info("Init")
         self.modules_worker = dict()
         self.modules_detector = PlugAndPlayWorker(self.reload)
+        time.sleep(2) # FIXME: change to pipe. Wait for EEPROM to refresh
         self.installed_modules = self.modules_detector.connected_modules
-        time.sleep(0.5) # Wait for EEPROM to refresh
-        print(self.installed_modules)
+        logger.info(f'Slot allocation: {self.installed_modules}')
         self.start_workers()
         start_web_server(self)
+        logger.info("Init Done")
+
 
     def __del__(self):
         self.stop_workers()
@@ -21,21 +25,22 @@ class SensorHubModuleManager:
     def start_workers(self):
         for slot, module in self.installed_modules.items():
             if module != '':
+                logger.debug(f"Init ModuleWorker for {module} at {slot}")
                 self.modules_worker[module] = ModuleWorker(module, slot)
 
     def stop_workers(self):
-        print('Stopping sensor workers....')
+        logger.info('Stopping sensor workers....')
         for worker in self.modules_worker.values():
             worker.active = False
         for worker in self.modules_worker.values():
             worker.join()
         self.modules_worker = dict()
-        print('Sensor workers stopped')
+        logger.info('Sensor workers stopped')
 
     def get_modules(self):
         installed_modules = list(self.modules_worker.keys())
-        empty_slots = [slot for slot in list(self.installed_modules.keys()) if self.installed_modules[slot] == '']
-        return installed_modules + empty_slots
+        # empty_slots = [f'slot{slot}-empty' for slot in list(self.installed_modules.keys()) if self.installed_modules[slot] == '']
+        return installed_modules
 
     def get_sensors(self, module):
         return self.modules_worker[module].module_sensors if module in self.modules_worker.keys() else []
