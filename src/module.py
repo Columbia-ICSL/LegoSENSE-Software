@@ -11,9 +11,15 @@ class SensorHubModuleManager:
         logger.info("Init")
         self.modules_worker = dict()
         self.modules_detector = PlugAndPlayWorker(self.reload)
-        time.sleep(2) # FIXME: change to pipe. Wait for EEPROM to refresh
-        self.installed_modules = self.modules_detector.connected_modules
-        logger.info(f'Slot allocation: {self.installed_modules}')
+        time.sleep(0.5) # FIXME: change to pipe. Wait for EEPROM to refresh
+        while True:
+            self.installed_modules = self.modules_detector.connected_modules
+            if all([len(i) == 0 for i in self.installed_modules.values()]):
+                logger.error(f'No module detected... Retrying in 1 second')
+                time.sleep(1)
+            else:
+                logger.info(f'Modules: {self.installed_modules}')
+                break
         self.start_workers()
         start_web_server(self)
         logger.info("System Ready")

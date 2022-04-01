@@ -56,6 +56,7 @@ class ModuleWorker(Thread):
             return
 
         self.module_sensors = module_driver.SENSORS
+        self.sensor_fail = {i: False for i in self.module_sensors}  # For logging sensor back online after fail
         self.sensor_cols = module_driver.SENSORS_COLS
         self.sensor_interface = module_driver.SENSORS_INTERFACE
         self.module_opts = module_driver.OPTIONS
@@ -177,9 +178,13 @@ class ModuleWorker(Thread):
                     self.sensor[i] += self.format_log(i, read_data)
                     if isinstance(read_data, dict):
                         self.handle_data(i, read_data)
+                    if self.sensor_fail[i]:
+                        self.logger.info(f'[{i}] is now back online')
+                        self.sensor_fail[i] = False
                 else:
                     self.logger.error(err)
-                    self.logger.error('Wait 1 second before continuing...')
+                    self.logger.error(f'[{i}] Failed. Wait 1 second before retrying...')
+                    self.sensor_fail[i] = True
                     time.sleep(1)
         # TODO: call driver's function to gracefully terminate
         self.logger.info(f'Terminated')
@@ -198,7 +203,14 @@ class PlugAndPlayWorker(Thread):
 
     def run(self):
         time.sleep(0.1) # FIXME: change to pipe. Wait for EEPROM to refresh
-        _, self.connected_modules = self.eep.get_status()
+        while True:
+            _, self.connected_modules = self.eep.get_status()
+            if all([len(i) == 0 for i in self.connected_modules.values()]):
+                self.logger.error(f'No module detected... Retrying in 1 second')
+                time.sleep(1)
+            else:
+                self.logger.info(f'Ready')
+                break
         last_connected_modules = self.connected_modules.copy()
         while self.active:
             time.sleep(0.5)
