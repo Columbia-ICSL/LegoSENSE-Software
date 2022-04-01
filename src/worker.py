@@ -3,11 +3,15 @@ import os
 import time
 import datetime
 import importlib
+import traceback
 from threading import Thread
+from contextlib import ExitStack
+
 from flask import Flask, make_response, render_template, request, jsonify
 from flask_sse import sse
 # from gevent.pywsgi import WSGIServer
 from config import WEB_SERVER_PORT
+from hal.util import ResourceManager
 from hal.interface import SensorHubInterface
 from log_util import get_logger
 
@@ -28,6 +32,7 @@ if not os.path.exists(LOG_FOLDER):
     finally:
         os.umask(original_umask)
 
+resource_manager = ResourceManager()
 
 class ModuleWorker(Thread):
     def __init__(self, module_name, slot):
@@ -40,8 +45,19 @@ class ModuleWorker(Thread):
         module = importlib.import_module(f'driver.{module_name}')
         module_driver = module.SensorHubModule
 
+        if module_driver.SENSORS is None:
+            self.logger.error('DriverError: `SENSORS` is not declaired!')
+            return
+        if module_driver.SENSORS_COLS is None:
+            self.logger.error('DriverError: `SENSORS_COLS` is not declaired!')
+            return
+        if module_driver.SENSORS_INTERFACE is None:
+            self.logger.error('DriverError: `SENSORS_INTERFACE` is not declaired!')
+            return
+
         self.module_sensors = module_driver.SENSORS
         self.sensor_cols = module_driver.SENSORS_COLS
+        self.sensor_interface = module_driver.SENSORS_INTERFACE
         self.sensor = dict()
         for i in self.module_sensors:
             self.sensor[i] = ('Time\t' + '\t'.join(self.sensor_cols[i]) + '\n').encode()
@@ -92,6 +108,8 @@ class ModuleWorker(Thread):
                 else:
                     ret += '\t 0' # Data not available
             return (ret + '\n').encode()
+        else:
+            self.logger.error(f'DriverError: Invalid read_data: {data}')
 
     def handle_data(self, sensor, data):
         self.save_log(sensor, data)
@@ -121,10 +139,26 @@ class ModuleWorker(Thread):
             assert isinstance(available_sensors, list), \
                 f'[{self.module}] DriverError: wait_for_next_sample must return list!'
             for i in available_sensors:
-                read_data = self.driver.read(i)
-                self.sensor[i] += self.format_log(i, read_data)
-                if isinstance(read_data, dict):
-                    self.handle_data(i, read_data)
+                err = None
+                with ExitStack() as context_mngr_stack:
+                    # Locking for critical section
+                    for sensor_interface in self.sensor_interface[i]:
+                        lock = resource_manager.lock(sensor_interface, self.interface.from_str(sensor_interface))
+                        # self.logger.debug(f'Locking {sensor_interface}')
+                        context_mngr_stack.enter_context(lock)
+                    # self.logger.debug(f'Lock acquired')
+                    # <--------- Actual sensor read -- critical section --------->
+                    try:
+                        read_data = self.driver.read(i)
+                    except:
+                        err = traceback.format_exc()
+                    # <------------------ end critical section ------------------>
+                if err is None:
+                    self.sensor[i] += self.format_log(i, read_data)
+                    if isinstance(read_data, dict):
+                        self.handle_data(i, read_data)
+                else:
+                    self.logger.error(err)
         # TODO: call driver's function to gracefully terminate
         self.logger.info(f'Terminated')
 
@@ -133,7 +167,7 @@ class PlugAndPlayWorker(Thread):
     def __init__(self, on_update_cb=None):
         self.logger = get_logger('PnP')
         self.logger.info('Init')
-        self.eep = EEP()
+        self.eep = EEP(lock=resource_manager.lock('I2C', 1))
         self.connected_modules = {}
         self.on_update_cb = on_update_cb
         self.active = True

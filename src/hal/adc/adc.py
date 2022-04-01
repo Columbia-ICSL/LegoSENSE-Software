@@ -10,7 +10,6 @@ except:
 
 class i2c_driver:
     def __init__(self, bus):
-        print("ADC INIT!!!!!!!!!!")
         self.bus = bus
         self.address = None
         pass

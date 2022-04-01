@@ -2,6 +2,9 @@ import os
 import sys
 sys.path.append(os.path.dirname((os.path.dirname(os.path.realpath(__file__)))))
 from hal.adc.adc import SensorHubADC
+from hal.util import ResourceManager
+
+resource_manager = ResourceManager()
 
 def get_i2c_bus(slot):
     if slot in ['slot1', 'slot2']:
@@ -54,4 +57,15 @@ class SensorHubInterface:
 
     def read_adc(self, channel):
         assert channel in [0, 1]
-        return self.adc.read(int(self.slot[-1]), channel)
+        with resource_manager.lock('I2C', 1):
+            return self.adc.read(int(self.slot[-1]), channel)
+
+    def from_str(self, interface_name):
+        if interface_name.upper() == 'I2C':
+            return self.i2c_bus()
+        elif interface_name.upper() == 'UART':
+            return self.uart()
+        elif interface_name.upper() == 'RST':
+            return self.pin_rst()
+        else:
+            raise ValueError(f'Invalid interface {interface_name}. Expected `I2C`, `UART`, or `RST`')

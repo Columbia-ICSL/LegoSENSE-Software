@@ -6,16 +6,11 @@ from configparser import ConfigParser
 
 
 class SensorHubModuleTemplate:
-    SENSORS = []
-    SENSORS_COLS = {
-
-    }
+    SENSORS = None
+    SENSORS_COLS = None
+    SENSORS_INTERFACE = None
 
     def __init__(self, config_path, interface):
-        # TODO: Add lock
-        print(f'I2C Bus: {interface.i2c_bus}')
-        print(f'UART : {interface.uart}')
-
         self.config_path = config_path
         self.config = ConfigParser()
         # https://stackoverflow.com/questions/19359556/configparser-reads-capital-keys-and-make-them-lower-case

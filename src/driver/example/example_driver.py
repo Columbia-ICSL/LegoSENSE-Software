@@ -19,6 +19,12 @@ class ExampleModule(SensorHubModuleTemplate):
         'Sensor A': ['A-1', 'A-2'],
         'Sensor B': ['B-1']
     }
+    # Used for locks
+    # I2C, SPI, or both
+    SENSORS_INTERFACE = {
+        'Sensor A': ['I2C', 'SPI'],
+        'Sensor B': ['SPI']
+    }
 
     def __init__(self, config_path, interface):
         super().__init__(config_path, interface)

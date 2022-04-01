@@ -84,10 +84,9 @@ class EEP(object):
         self.lock = lock if lock is not None else Lock()
         self.eep_addr = eep_addr
 
-        self.lock.acquire()
-        self.mux = TCA9548A()
-        self.mux.set_control_register(0b00000000)  # disable all
-        self.lock.release()
+        with self.lock:
+            self.mux = TCA9548A()
+            self.mux.set_control_register(0b00000000)  # disable all
 
         self.eep_bus = SMBus(1)
         self.status_thread = Thread(target=self.scan_eep)
@@ -96,30 +95,25 @@ class EEP(object):
     def scan_eep(self):
         while True:
             for i in range(4):
-                self.lock.acquire()
-                self.mux.set_control_register(0b00000000)  # disable all
-                self.mux.set_channel(i, 1)
-                self.lock.release()
+                with self.lock:
+                    self.mux.set_control_register(0b00000000)  # disable all
+                    self.mux.set_channel(i, 1)
                 
                 # First run: quick scan no delay
                 if self.slots_taken[i] is not None:
                     time.sleep(0.2)
-                self.lock.acquire()
                 try:
-                    self.eep_bus.read_byte(self.eep_addr)
-                    self.lock.release()
+                    with self.lock:
+                        self.eep_bus.read_byte(self.eep_addr)
                     self.slots_taken[i] = True
                     module_name = self.read_eep(i+1)
                     self.module_names[i+1] = "UnrecognizedModule" if module_name is None else module_name.decode()
                 except KeyboardInterrupt:
-                    self.lock.release()
                     exit(1)
                 except OSError: # error name
-                    self.lock.release()
                     self.slots_taken[i] = False
                     self.module_names[i+1] = ""
                 except ValueError: # ValueError: I2C device not exist on: 0x50
-                    self.lock.release()
                     self.slots_taken[i] = False
                     self.module_names[i+1] = ""
     
@@ -137,15 +131,11 @@ class EEP(object):
         to_write += len(val).to_bytes(1, 'big')
         to_write += val.encode('ascii')
         
-        self.lock.acquire()
-        self.mux.set_control_register(0b00000000)  # disable all
-        self.mux.set_channel(idx-1, 1)
-        self.lock.release()
-
-        self.lock.acquire()
-        eeprom = EEPROM("24c02", self.EEP_BUS, self.eep_addr)
-        eeprom.write(to_write)
-        self.lock.release()
+        with self.lock:
+            self.mux.set_control_register(0b00000000)  # disable all
+            self.mux.set_channel(idx-1, 1)
+            eeprom = EEPROM("24c02", self.EEP_BUS, self.eep_addr)
+            eeprom.write(to_write)
 
         # if check_integrity:
         #     readback = self.read_eep(idx)
@@ -155,18 +145,14 @@ class EEP(object):
         assert 1 <= idx <= 4, f'Slots must be between 1 and 4: got {idx}'
         assert self.slots_taken[idx-1], f'Daughterboard / EEPROM not detected on slot {idx}'
 
-        self.lock.acquire()
-        self.mux.set_control_register(0b00000000)  # disable all
-        self.mux.set_channel(idx-1, 1)
-        self.lock.release()
+        with self.lock:
+            self.mux.set_control_register(0b00000000)  # disable all
+            self.mux.set_channel(idx-1, 1)
+            eeprom = EEPROM("24c02", self.EEP_BUS, self.eep_addr)
+            data_length = int.from_bytes(eeprom.read(size=1, addr=0), "big")
+            assert 0 <= data_length <= 255
+            data = eeprom.read(size=data_length, addr=1)
 
-        self.lock.acquire()
-        eeprom = EEPROM("24c02", self.EEP_BUS, self.eep_addr)
-        data_length = int.from_bytes(eeprom.read(size=1, addr=0), "big")
-        assert 0 <= data_length <= 255
-        data = eeprom.read(size=data_length, addr=1)
-        self.lock.release()
-        
         # print(f'Data length={data_length}, data={data}')
         if data_length == 255 and 0xFF in data:  # Uninitialized EEPROM
             return None
