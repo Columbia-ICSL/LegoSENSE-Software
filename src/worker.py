@@ -226,7 +226,7 @@ server = Flask(
 )
 server.config['REDIS_URL'] = 'redis://localhost'
 server.register_blueprint(sse, url_prefix='/stream')
-
+server_logger = get_logger('WebServer')
 manager = None
 
 
@@ -292,6 +292,7 @@ def seh_reload_system():
 
 @server.route('/update_settings', methods=['POST'])
 def update_settings():
+    server_logger.info('POST /update_settings')
     module = request.headers['Module-Name']
     sensor = request.headers['Sensor-Name']
     new_config = request.json

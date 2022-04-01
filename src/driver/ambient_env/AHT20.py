@@ -13,12 +13,13 @@ AHT20_STATUSBIT_BUSY = 7                    # The 7th bit is the Busy indication
 AHT20_STATUSBIT_CALIBRATED = 3              # The 3rd bit is the CAL (calibration) Enable bit. 1 = Calibrated, 0 = not
 
 class AHT20:
-    # https://github.com/Chouffy/python_sensor_aht20/blob/main/AHT20.py
+    # Modified from https://github.com/Chouffy/python_sensor_aht20/blob/main/AHT20.py
     # I2C communication driver for AHT20, using only smbus2
 
-    def __init__(self, bus=1):
+    def __init__(self, lock, bus=1):
         # Initialize AHT20
         self.bus = bus
+        self.lock = lock
         self.cmd_soft_reset()
 
         # Check for calibration, if not done then do and wait 10 ms
@@ -30,27 +31,31 @@ class AHT20:
     def cmd_soft_reset(self):
         # Send the command to soft reset
         with SMBus(self.bus) as i2c_bus:
-            i2c_bus.write_i2c_block_data(AHT20_I2CADDR, 0x0, AHT20_CMD_SOFTRESET)
+            with self.lock:
+                i2c_bus.write_i2c_block_data(AHT20_I2CADDR, 0x0, AHT20_CMD_SOFTRESET)
         time.sleep(0.04)    # Wait 40 ms after poweron
         return True
 
     def cmd_initialize(self):
         # Send the command to initialize (calibrate)
         with SMBus(self.bus) as i2c_bus:
-            i2c_bus.write_i2c_block_data(AHT20_I2CADDR, 0x0 , AHT20_CMD_INITIALIZE)
+            with self.lock:
+                i2c_bus.write_i2c_block_data(AHT20_I2CADDR, 0x0 , AHT20_CMD_INITIALIZE)
         return True
 
     def cmd_measure(self):
         # Send the command to measure
         with SMBus(self.bus) as i2c_bus:
-            i2c_bus.write_i2c_block_data(AHT20_I2CADDR, 0, AHT20_CMD_MEASURE)
+            with self.lock:
+                i2c_bus.write_i2c_block_data(AHT20_I2CADDR, 0, AHT20_CMD_MEASURE)
         time.sleep(0.08)    # Wait 80 ms after measure
         return True
 
     def get_status(self):
         # Get the full status byte
         with SMBus(self.bus) as i2c_bus:
-            return i2c_bus.read_i2c_block_data(AHT20_I2CADDR, 0x0, 1)[0]
+            with self.lock:
+                return i2c_bus.read_i2c_block_data(AHT20_I2CADDR, 0x0, 1)[0]
         return True
 
     def get_status_calibrated(self):
@@ -75,7 +80,8 @@ class AHT20:
 
         # Read data and return it
         with SMBus(self.bus) as i2c_bus:
-            return i2c_bus.read_i2c_block_data(AHT20_I2CADDR, 0x0, 7)
+            with self.lock:
+                return i2c_bus.read_i2c_block_data(AHT20_I2CADDR, 0x0, 7)
 
     def get_temperature(self):
         # Get a measure, select proper bytes, return converted data

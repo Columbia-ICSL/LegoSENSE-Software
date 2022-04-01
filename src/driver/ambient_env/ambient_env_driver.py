@@ -24,17 +24,20 @@ class AmbientEnvModule(SensorHubModuleTemplate):
         'temp_hum': ['I2C'],
         'pressure': ['I2C']
     }
+    OPTIONS = ['nolock', 'logging']
     # <<<<<<<<<< Fill in declarations <<<<<<<<<<
 
-    def __init__(self, config_path, interface):
-        print('AmbientEnv init')
-        super().__init__(config_path, interface)
+    def __init__(self, config_path, interface, **kwargs):
+        self.lock = kwargs['lock']
+        self.logger = kwargs['logger']
+        self.logger.info('Init')
+        super().__init__(config_path, interface, **kwargs)
 
         # >>>>>>>>>> Fill in driver initializations >>>>>>>>>>
-        self.temp_hum = AHT20(bus=interface.i2c_bus)
+        self.temp_hum = AHT20(lock=self.lock['I2C'], bus=interface.i2c_bus)
         self.pressure = SPL06(bus=interface.i2c_bus)
         # <<<<<<<<<< Fill in driver initializations <<<<<<<<<<
-        print('AmbientEnv init done')
+        self.logger.info('Ready')
 
     def setup_config(self):
         # >>>>>>>>>> Fill in configuration setups >>>>>>>>>>
@@ -44,27 +47,11 @@ class AmbientEnvModule(SensorHubModuleTemplate):
     def read(self, sensor):
         # >>>>>>>>>> Fill in reading values >>>>>>>>>>
         if sensor == 'temp_hum':
-            try:
-                temperature = self.temp_hum.get_temperature()
-                humidity = self.temp_hum.get_humidity()
-                return {'_t': time.time(), 'Temperature': temperature, 'Humidity': humidity}
-            except:
-                with open(err_log_path, 'a') as f:
-                    f.write(str(time.time()) + '\n' + traceback.format_exc() + '\n')
-                traceback.print_exc()
-                print("Waiting 2 sec before continuing")
-                time.sleep(2)
-                return {'_t': time.time(), 'Temperature': -1, 'Humidity': -1}
+            temperature = self.temp_hum.get_temperature()
+            humidity = self.temp_hum.get_humidity()
+            return {'_t': time.time(), 'Temperature': temperature, 'Humidity': humidity}
         elif sensor == 'pressure':
-            try:
-                return {'_t': time.time(), 'Pressure': self.pressure.get_pressure()}
-            except:
-                with open(err_log_path, 'a') as f:
-                    f.write(str(time.time()) + '\n' + traceback.format_exc() + '\n')
-                traceback.print_exc()
-                print("Waiting 2 sec before continuing")
-                time.sleep(2)
-                return {'_t': time.time(), 'Pressure': -1}
+            return {'_t': time.time(), 'Pressure': self.pressure.get_pressure()}
         # <<<<<<<<<< Fill in reading values <<<<<<<<<<
         else:
             return f'{sensor}: not implemented'
