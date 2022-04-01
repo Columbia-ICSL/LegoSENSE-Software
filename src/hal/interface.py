@@ -14,6 +14,14 @@ def get_i2c_bus(slot):
     else:
         raise RuntimeError(f'Invalid slot {slot}!')
 
+def get_spi_bus(slot):
+    if slot in ['slot1', 'slot2']:
+        return 0
+    elif slot in ['slot3', 'slot4']:
+        return 1
+    else:
+        raise RuntimeError(f'Invalid slot {slot}!')
+
 def get_uart(slot):
     if slot == 'slot1':
         # GPIO 14, 15 -- ALT0 -- UART0
@@ -48,6 +56,10 @@ class SensorHubInterface:
         return get_i2c_bus(self.slot)
 
     @property
+    def spi_bus(self):
+        return get_spi_bus(self.slot)
+
+    @property
     def uart(self):
         return get_uart(self.slot)
 
@@ -62,10 +74,12 @@ class SensorHubInterface:
 
     def from_str(self, interface_name):
         if interface_name.upper() == 'I2C':
-            return self.i2c_bus()
+            return self.i2c_bus
+        if interface_name.upper() == 'SPI':
+            return self.spi_bus
         elif interface_name.upper() == 'UART':
-            return self.uart()
+            return self.uart
         elif interface_name.upper() == 'RST':
-            return self.pin_rst()
+            return self.pin_rst
         else:
             raise ValueError(f'Invalid interface {interface_name}. Expected `I2C`, `UART`, or `RST`')
