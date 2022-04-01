@@ -12,9 +12,12 @@ from driver.driver_template import SensorHubModuleTemplate
 
 class MQ9Module(SensorHubModuleTemplate):
     # >>>>>>>>>> Fill in declarations >>>>>>>>>>
-    SENSORS = ["MQ9"]
+    SENSORS = ['MQ9']
     SENSORS_COLS = {
-        "MQ9": ["Reading"]
+        'MQ9': ['Reading']
+    }
+    SENSORS_INTERFACE = {
+        'MQ9': []
     }
     # <<<<<<<<<< Fill in declarations <<<<<<<<<<
 

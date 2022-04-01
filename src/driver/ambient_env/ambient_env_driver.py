@@ -20,6 +20,10 @@ class AmbientEnvModule(SensorHubModuleTemplate):
         'temp_hum': ['Temperature', 'Humidity'],
         'pressure': ['Pressure']
     }
+    SENSORS_INTERFACE = {
+        'temp_hum': ['I2C'],
+        'pressure': ['I2C']
+    }
     # <<<<<<<<<< Fill in declarations <<<<<<<<<<
 
     def __init__(self, config_path, interface):

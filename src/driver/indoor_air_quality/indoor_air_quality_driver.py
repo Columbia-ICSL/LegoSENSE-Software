@@ -20,6 +20,9 @@ class IndoorAirQualityModule(SensorHubModuleTemplate):
     SENSORS_COLS = {
         "Indoor Air Quality": ["CO2", "VOC"]
     }
+    SENSORS_INTERFACE = {
+        'Indoor Air Quality': ['I2C']
+    }
     # <<<<<<<<<< Fill in declarations <<<<<<<<<<
 
     def __init__(self, config_path, interface):
