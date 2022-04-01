@@ -58,14 +58,27 @@ class ModuleWorker(Thread):
         self.module_sensors = module_driver.SENSORS
         self.sensor_cols = module_driver.SENSORS_COLS
         self.sensor_interface = module_driver.SENSORS_INTERFACE
+        self.module_opts = module_driver.OPTIONS
         self.sensor = dict()
         for i in self.module_sensors:
             self.sensor[i] = ('Time\t' + '\t'.join(self.sensor_cols[i]) + '\n').encode()
 
         self.interface = SensorHubInterface(f'slot{slot}')
+        additional_args = {}
+
+        # <---------- driver Options ---------->
+        if 'nolock' in self.module_opts:
+            additional_args['lock'] = {
+                'I2C': resource_manager.lock('I2C', self.interface.i2c_bus),
+                'SPI': resource_manager.lock('SPI', self.interface.spi_bus)
+            }
+        if 'logging' in self.module_opts:
+            additional_args['logger'] = get_logger(f'Driver-M{slot}({module_name})')
+        # <-------- end driver Options -------->
         self.driver = module_driver(
             config_path=os.path.join(DRIVER_PATH, module_name, 'config.ini'),
-            interface=self.interface
+            interface=self.interface,
+            **additional_args
             )
 
         self.csv_log_path = os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"%y%m%d_%H%M%S_{module_name}.csv"))
@@ -140,25 +153,34 @@ class ModuleWorker(Thread):
                 f'[{self.module}] DriverError: wait_for_next_sample must return list!'
             for i in available_sensors:
                 err = None
-                with ExitStack() as context_mngr_stack:
-                    # Locking for critical section
-                    for sensor_interface in self.sensor_interface[i]:
-                        lock = resource_manager.lock(sensor_interface, self.interface.from_str(sensor_interface))
-                        # self.logger.debug(f'Locking {sensor_interface}')
-                        context_mngr_stack.enter_context(lock)
-                    # self.logger.debug(f'Lock acquired')
-                    # <--------- Actual sensor read -- critical section --------->
+                if 'nolock' not in self.module_opts and len(self.sensor_interface[i]) != 0:
+                    # Requires lock
+                    with ExitStack() as context_mngr_stack:
+                        # Locking for critical section
+                        for sensor_interface in self.sensor_interface[i]:
+                            lock = resource_manager.lock(sensor_interface, self.interface.from_str(sensor_interface))
+                            # self.logger.debug(f'Locking {sensor_interface}')
+                            context_mngr_stack.enter_context(lock)
+                        # self.logger.debug(f'Lock acquired')
+                        # <--------- Actual sensor read -- critical section --------->
+                        try:
+                            read_data = self.driver.read(i)
+                        except:
+                            err = traceback.format_exc()
+                        # <------------------ end critical section ------------------>
+                else:
                     try:
                         read_data = self.driver.read(i)
                     except:
                         err = traceback.format_exc()
-                    # <------------------ end critical section ------------------>
                 if err is None:
                     self.sensor[i] += self.format_log(i, read_data)
                     if isinstance(read_data, dict):
                         self.handle_data(i, read_data)
                 else:
                     self.logger.error(err)
+                    self.logger.error('Wait 1 second before continuing...')
+                    time.sleep(1)
         # TODO: call driver's function to gracefully terminate
         self.logger.info(f'Terminated')
 

@@ -9,8 +9,9 @@ class SensorHubModuleTemplate:
     SENSORS = None
     SENSORS_COLS = None
     SENSORS_INTERFACE = None
+    OPTIONS = []
 
-    def __init__(self, config_path, interface):
+    def __init__(self, config_path, interface, **kwargs):
         self.config_path = config_path
         self.config = ConfigParser()
         # https://stackoverflow.com/questions/19359556/configparser-reads-capital-keys-and-make-them-lower-case

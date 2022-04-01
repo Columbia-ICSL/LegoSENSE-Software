@@ -16,7 +16,7 @@ class SensorHubModuleManager:
         logger.info(f'Slot allocation: {self.installed_modules}')
         self.start_workers()
         start_web_server(self)
-        logger.info("Init Done")
+        logger.info("System Ready")
 
 
     def __del__(self):
