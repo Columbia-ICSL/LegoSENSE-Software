@@ -1,17 +1,16 @@
-import re
 import time
-import importlib
-import config
 from worker import ModuleWorker, PlugAndPlayWorker, start_web_server
 from log_util import get_logger
+
 logger = get_logger('ModuleManager')
+
 
 class SensorHubModuleManager:
     def __init__(self):
         logger.info("Init")
         self.modules_worker = dict()
         self.modules_detector = PlugAndPlayWorker(self.reload)
-        time.sleep(0.5) # FIXME: change to pipe. Wait for EEPROM to refresh
+        time.sleep(0.5)  # FIXME: change to pipe. Wait for EEPROM to refresh
         while True:
             self.installed_modules = self.modules_detector.connected_modules
             if all([len(i) == 0 for i in self.installed_modules.values()]):
@@ -23,7 +22,6 @@ class SensorHubModuleManager:
         self.start_workers()
         start_web_server(self)
         logger.info("System Ready")
-
 
     def __del__(self):
         self.stop_workers()
@@ -81,10 +79,10 @@ class SensorHubModuleManager:
         return self.modules_worker[module]
 
     def get_sensor_filesize(self, module, sensor):
-        return len(self.modules_worker[module].sensor[sensor])
+        return len(self.modules_worker[module].fuse_data[sensor])
 
     def get_sensor_data(self, module, sensor, offset, length):
-        return self.modules_worker[module].sensor[sensor][offset: offset + length]
+        return self.modules_worker[module].fuse_data[sensor][offset: offset + length]
 
     def write_data(self, module, sensor, offset, buf):
         self.modules_worker[module].driver.write(buf)

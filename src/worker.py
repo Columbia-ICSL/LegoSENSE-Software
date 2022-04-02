@@ -26,13 +26,14 @@ else:
 DRIVER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'driver')
 LOG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'log')
 if not os.path.exists(LOG_FOLDER):
+    original_umask = os.umask(0)
     try:
-        original_umask = os.umask(0)
         os.makedirs(LOG_FOLDER, 0o777)
     finally:
         os.umask(original_umask)
 
 resource_manager = ResourceManager()
+
 
 class ModuleWorker(Thread):
     def __init__(self, module_name, slot):
@@ -40,6 +41,7 @@ class ModuleWorker(Thread):
         self.logger = get_logger(f'Worker-M{slot}({module_name})')
         self.logger.info(f"Init")
 
+        # >>>>>>>>>>>> load driver >>>>>>>>>>>>
         self.module = module_name
         self.slot = slot
         module = importlib.import_module(f'driver.{module_name}')
@@ -60,14 +62,15 @@ class ModuleWorker(Thread):
         self.sensor_cols = module_driver.SENSORS_COLS
         self.sensor_interface = module_driver.SENSORS_INTERFACE
         self.module_opts = module_driver.OPTIONS
-        self.sensor = dict()
+        self.fuse_data = dict()
         for i in self.module_sensors:
-            self.sensor[i] = ('Time\t' + '\t'.join(self.sensor_cols[i]) + '\n').encode()
+            self.fuse_data[i] = ('Time\t' + '\t'.join(self.sensor_cols[i]) + '\n').encode()
 
         self.interface = SensorHubInterface(f'slot{slot}')
-        additional_args = {}
+        # <<<<<<<<<<<< load driver <<<<<<<<<<<<
 
-        # <---------- driver Options ---------->
+        # >>>>>>>>>>>> driver Options >>>>>>>>>>>>
+        additional_args = {}
         if 'nolock' in self.module_opts:
             additional_args['lock'] = {
                 'I2C': resource_manager.lock('I2C', self.interface.i2c_bus),
@@ -75,26 +78,32 @@ class ModuleWorker(Thread):
             }
         if 'logging' in self.module_opts:
             additional_args['logger'] = get_logger(f'Driver-M{slot}({module_name})')
-        # <-------- end driver Options -------->
+        # <<<<<<<<<<<< driver Options <<<<<<<<<<<<
+
         self.driver = module_driver(
             config_path=os.path.join(DRIVER_PATH, module_name, 'config.ini'),
             interface=self.interface,
             **additional_args
-            )
+        )
 
-        self.csv_log_path = os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"%y%m%d_%H%M%S_{module_name}.csv"))
+        # >>>>>>>>>>>> prepare csv log >>>>>>>>>>>>
+        self.csv_log_path = os.path.join(LOG_FOLDER,
+                                         datetime.datetime.now().strftime(f"%y%m%d_%H%M%S_{module_name}.csv"))
         log_header = ["Epoch Time"]
         self.log_index = {}
         self.total_log_cols = 1
         for sensor, cols in self.sensor_cols.items():
-            self.log_index[sensor] = dict(zip(cols, list(range(self.total_log_cols, self.total_log_cols+len(cols)))))
+            self.log_index[sensor] = dict(zip(cols, list(range(self.total_log_cols, self.total_log_cols + len(cols)))))
             self.total_log_cols += len(cols)
             log_header.extend([f'{sensor}_{i}' for i in cols])
         self.write_csv_from_list(log_header)
+        # <<<<<<<<<<<< prepare csv log <<<<<<<<<<<<
 
+        # >>>>>>>>>>>> start driver >>>>>>>>>>>>
         self.active = True
         Thread.__init__(self)
         self.start()
+        # <<<<<<<<<<<< start driver <<<<<<<<<<<<
 
     def write_csv_from_list(self, data):
         assert isinstance(data, list)
@@ -106,21 +115,24 @@ class ModuleWorker(Thread):
 
     def format_log(self, sensor, data):
         # time_str = (datetime.datetime.now() + datetime.timedelta(hours=3)).strftime("[%H:%M:%S.%f]")
-        
+
         if isinstance(data, str):
             t = str(time.time())
             return (t + '\t' + data + '\n').encode()
         elif isinstance(data, dict):
             for i in data.keys():
                 if i != '_t':
-                    assert i in self.sensor_cols[sensor], f'DriverError: Sensor column {i} must be declared in xModuleSensorsColumns!'
-            
+                    if i not in self.sensor_cols[sensor]:
+                        self.logger.error(f'DriverError: Sensor column {i} not found in SENSORS_COLS!'
+                                          f'Ignored {i}')
+                        del data[i]
+
             ret = str(data['_t'])
             for col in self.sensor_cols[sensor]:
                 if col in data.keys():
                     ret += ('\t' + str(data[col]))
                 else:
-                    ret += '\t 0' # Data not available
+                    ret += '\t 0'  # Data not available
             return (ret + '\n').encode()
         else:
             self.logger.error(f'DriverError: Invalid read_data: {data}')
@@ -144,7 +156,6 @@ class ModuleWorker(Thread):
             idx = self.log_index[sensor][col]
             log_cols[idx] = str(col_data)
         self.write_csv_from_list(log_cols)
-        
 
     def run(self):
         while self.active:
@@ -175,7 +186,7 @@ class ModuleWorker(Thread):
                     except:
                         err = traceback.format_exc()
                 if err is None:
-                    self.sensor[i] += self.format_log(i, read_data)
+                    self.fuse_data[i] += self.format_log(i, read_data)
                     if isinstance(read_data, dict):
                         self.handle_data(i, read_data)
                     if self.sensor_fail[i]:
@@ -202,7 +213,7 @@ class PlugAndPlayWorker(Thread):
         self.start()
 
     def run(self):
-        time.sleep(0.1) # FIXME: change to pipe. Wait for EEPROM to refresh
+        time.sleep(0.1)  # FIXME: change to pipe. Wait for EEPROM to refresh
         while True:
             _, self.connected_modules = self.eep.get_status()
             if all([len(i) == 0 for i in self.connected_modules.values()]):
