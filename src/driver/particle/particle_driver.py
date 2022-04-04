@@ -19,6 +19,9 @@ class ParticleModule(SensorHubModuleTemplate):
     SENSORS_COLS = {
         "Particle Matter": ["PM1.0_ultrafine","PM2.5_combustion_particles__organic_compounds__metals","PM10__dust__pollen__mould_spores","PM1.0_atoms_env","PM2.5_atoms_env","PM10_atoms_env","LT0.3um","LT0.5um","LT1.0um","LT2.5um","LT5.0um","LT10um"]
     }
+    SENSORS_INTERFACE = {
+        'Particle Matter': []
+    }
     # <<<<<<<<<< Fill in declarations <<<<<<<<<<
 
     def __init__(self, config_path, interface):
