@@ -1,6 +1,9 @@
 import os
 import sys
 sys.path.append(os.path.dirname((os.path.dirname(os.path.realpath(__file__)))))
+
+import RPi.GPIO as GPIO
+
 from hal.adc.adc import SensorHubADC
 from hal.util import ResourceManager
 
@@ -21,6 +24,26 @@ def get_spi_bus(slot):
         return 1
     else:
         raise RuntimeError(f'Invalid slot {slot}!')
+
+def get_spi_pin_bcm(slot):
+    assert slot in ['slot1', 'slot2', 'slot3', 'slot4']
+    if slot in ['slot1', 'slot2']:
+        cs = 8 if slot == 'slot1' else 7
+        miso = 9
+        mosi = 10
+        sck = 11
+    elif slot in ['slot3', 'slot4']:
+        cs = 18 if slot == 'slot3' else 17
+        miso = 19
+        mosi = 20
+        sck = 21
+    return {
+        'mode': GPIO.BCM,
+        'cs': cs,
+        'miso': miso,
+        'mosi': mosi,
+        'sck': sck
+    }
 
 def get_uart(slot):
     if slot == 'slot1':
@@ -58,6 +81,10 @@ class SensorHubInterface:
     @property
     def spi_bus(self):
         return get_spi_bus(self.slot)
+
+    @property
+    def spi_pins_bcm(self):
+        return get_spi_pin_bcm(self.slot)
 
     @property
     def uart(self):

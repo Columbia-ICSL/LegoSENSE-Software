@@ -1,0 +1,1 @@
+from driver.thermalcouple.thermalcouple_driver import ThermalcoupleModule as SensorHubModule
