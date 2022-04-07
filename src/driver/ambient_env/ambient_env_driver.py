@@ -54,7 +54,8 @@ class AmbientEnvModule(SensorHubModuleTemplate):
             'temp_hum': time.time(),
             'pressure': time.time(),
             'wind': time.time()
-        }        # <<<<<<<<<< Fill in configuration setups <<<<<<<<<<
+        }        
+        # <<<<<<<<<< Fill in configuration setups <<<<<<<<<<
 
     # >>>>>>>>>> Fill in custom functions >>>>>>>>>>
     def _calc_next_sched(self, sensor):
