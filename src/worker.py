@@ -254,6 +254,12 @@ manager = None
 
 
 # TODO: Instead of copy these routes from SensorHub-dashboard submodule, import from it
+@server.route("/get_slots")
+def get_slots():
+    modules = manager.installed_modules
+    return jsonify(modules)
+
+
 @server.route("/")
 def index_page():
     modules = manager.get_modules_and_sensors()
