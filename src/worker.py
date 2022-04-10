@@ -80,11 +80,30 @@ class ModuleWorker(Thread):
             additional_args['logger'] = get_logger(f'Driver-M{slot}({module_name})')
         # <<<<<<<<<<<< driver Options <<<<<<<<<<<<
 
-        self.driver = module_driver(
-            config_path=os.path.join(DRIVER_PATH, module_name, 'config.ini'),
-            interface=self.interface,
-            **additional_args
-        )
+        for i in range(5):
+            error = None
+            try:
+                self.driver = module_driver(
+                    config_path=os.path.join(DRIVER_PATH, module_name, 'config.ini'),
+                    interface=self.interface,
+                    **additional_args
+                )
+                error = None
+                break
+            except:
+                error = traceback.format_exc()
+                self.logger.error(error)
+                self.logger.error(f'Driver Init Failed. Wait 1 second before retrying...')
+                time.sleep(1)
+                continue
+        
+        if error is not None:
+            fail_log_path = os.path.join(LOG_FOLDER,
+                                        datetime.datetime.now().strftime(f"%y%m%d_%H%M%S_{module_name}_INIT_FAIL.csv"))
+            with open(fail_log_path, 'w') as f:
+                f.write(error)
+            self.logger.error('Too much failed attempts to initialize driver. Daughterboard ignored.')
+            return
 
         # >>>>>>>>>>>> prepare csv log >>>>>>>>>>>>
         self.csv_log_path = os.path.join(LOG_FOLDER,
@@ -160,9 +179,15 @@ class ModuleWorker(Thread):
     def run(self):
         while self.active:
             # print(f'{self.module} working...')
-            available_sensors = self.driver.wait_for_next_sample()
-            assert isinstance(available_sensors, list), \
+            try:
+                available_sensors = self.driver.wait_for_next_sample()
+                assert isinstance(available_sensors, list), \
                 f'[{self.module}] DriverError: wait_for_next_sample must return list!'
+            except:
+                    self.logger.error(traceback.format_exc())
+                    self.logger.error(f'wait_for_next_sample Failed. Wait 1 second before retrying...')
+                    time.sleep(1)
+                    continue
             for i in available_sensors:
                 err = None
                 if 'nolock' not in self.module_opts and len(self.sensor_interface[i]) != 0:
