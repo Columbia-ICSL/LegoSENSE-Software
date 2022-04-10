@@ -77,5 +77,5 @@ class ExampleModule(SensorHubModuleTemplate):
                 return [sensor]
         
         # Wait until one of the sensor is due to be read
-        time.sleep(min(list(self.next_sched.values())) - time.time())
+        time.sleep(max(0, min(list(self.next_sched.values())) - time.time()))
         return self.wait_for_next_sample()
