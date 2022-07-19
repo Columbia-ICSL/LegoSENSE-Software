@@ -48,3 +48,6 @@ class SensorHubModuleTemplate:
         """
         time.sleep(0.2)
         return ['SensorName']
+    
+    def shutdown(self) -> None:
+        pass

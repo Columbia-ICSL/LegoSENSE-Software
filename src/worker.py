@@ -222,7 +222,8 @@ class ModuleWorker(Thread):
                     self.logger.error(f'[{i}] Failed. Wait 1 second before retrying...')
                     self.sensor_fail[i] = True
                     time.sleep(1)
-        # TODO: call driver's function to gracefully terminate
+        # Call driver's function to gracefully terminate
+        self.driver.shutdown()
         self.logger.info(f'Terminated')
 
 
