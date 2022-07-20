@@ -3,6 +3,7 @@ import time
 import serial
 import datetime
 import traceback
+from func_timeout import func_set_timeout
 from log_util import get_logger
 from serial.tools import list_ports
 
@@ -18,6 +19,10 @@ def get_port():
             return port.device
     raise RuntimeError('Cannot find USB device!')
 
+@func_set_timeout(5)
+def serial_readline(ser):
+    return ser.readline()
+
 save_interval = 50
 last_save = time.time()
 data_buf = ''
@@ -29,7 +34,7 @@ while True:
         with serial.Serial(get_port(), 115200) as ser:
             while True:
                 try:
-                    data = ser.readline()
+                    data = serial_readline(ser)
                     data_buf += f'{time.time()},' + data.decode()
                     i += 1
                     if i % save_interval == 0:
@@ -43,9 +48,9 @@ while True:
                 except serial.serialutil.SerialException:
                     raise # leave outside to handle so it can restart serial
                 except:
-                    logger.error(traceback.format_exc())
-                    time.sleep(1)
+                    raise
     except KeyboardInterrupt:
+        logger.error(traceback.format_exc())
         break
     except:
         logger.error(traceback.format_exc())
