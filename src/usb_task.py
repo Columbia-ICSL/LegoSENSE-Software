@@ -12,6 +12,8 @@ logger = get_logger('IMU', file=os.path.join(LOG_FOLDER, datetime.datetime.now()
 def get_port():
     ports = list_ports.comports()
     for port in ports:
+        if 'CP2104' in port.description:
+            return port.device
         if port.description == 'USB Serial':
             return port.device
     raise RuntimeError('Cannot find USB device!')
