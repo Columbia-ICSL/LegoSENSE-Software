@@ -12,7 +12,7 @@ if not os.path.exists(LOG_FOLDER):
     finally:
         os.umask(original_umask)
 
-def get_logger(name, file=None):
+def get_logger(name, file=None, file_handler=None):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
@@ -22,11 +22,14 @@ def get_logger(name, file=None):
     # c_handler.setFormatter(logging.Formatter('[%(levelname)s] %(name)s - %(message)s'))
     logger.addHandler(c_handler)
 
-    if file is None:
-        file = os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"sehd_%y%m%d_%H%M%S.log"))
-    f_handler = logging.FileHandler(file)
-    f_handler.setLevel(logging.DEBUG)
-    f_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s - %(message)s'))
+    if file_handler is not None:
+        f_handler = file_handler
+    else:
+        if file is None:
+            file = os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"sehd_%y%m%d_%H%M%S.log"))
+        f_handler = logging.FileHandler(file)
+        f_handler.setLevel(logging.DEBUG)
+        f_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s - %(message)s'))
     logger.addHandler(f_handler)
     
     coloredlogs.install(level='DEBUG', logger=logger)
