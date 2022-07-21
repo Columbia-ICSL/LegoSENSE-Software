@@ -1,8 +1,20 @@
 import os
+import sys
 import string
 import pickle
+import requests
+import datetime
+import traceback
 import subprocess
+from func_timeout import func_set_timeout
 from flask import Flask, request, make_response, jsonify
+
+sys.path.append(os.path.dirname((os.path.dirname(os.path.realpath(__file__)))))
+LOG_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'log')
+
+from log_util import get_logger
+logger = get_logger('Controller', file=os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"controller_%y%m%d_%H%M%S.log")))
+
 
 src_dir = os.path.dirname((os.path.dirname(os.path.realpath(__file__))))
 log_dir = os.path.join(src_dir, 'log')
@@ -11,6 +23,11 @@ event_state_file = os.path.join(log_dir, 'event_state.pkl')
 log_filter_chars = set(string.printable)  # For filter invalid characters in log
 
 app = Flask(__name__)
+
+@func_set_timeout(5)
+def post_message(url, json):
+    logger.info(f'Posting to {url}: {json}')
+    return requests.post(url, json = json)
 
 
 def os_command(command_list, notify=True, cwd=None):
@@ -24,19 +41,18 @@ def os_command(command_list, notify=True, cwd=None):
         if isinstance(result, bytes):
             result = result.decode('utf-8')
             if notify:
-                print("[CMD]", " ".join(command_list), '\n', result)
+                logger.info("[CMD]", " ".join(command_list), '\n', result)
     except subprocess.CalledProcessError as exc:
-        print("[CMD]", " ".join(command_list))
+        logger.info("[CMD]", " ".join(command_list))
         result = exc.output
-        print("[CMD]", " ".join(command_list))
-        print("[ERR]", result)
+        logger.info("[ERR]", result)
 
     return result
 
 
 @app.route('/', methods=['GET'])
 def ping():
-    result = os_command(['date'])
+    result = os_command(['date'], notify=False)
     ret = f'SensorHub Controller is live. System time: {result}'
     return make_response(ret)
 
@@ -55,7 +71,7 @@ def ls_log():
 
 @app.route('/get_time', methods=['GET'])
 def get_os_time():
-    result = os_command(['date'])
+    result = os_command(['date'], notify=False)
     return make_response(result)
 
 
@@ -63,7 +79,7 @@ def get_os_time():
 def set_os_time():
     configs = request.headers
     if 'Time' in configs.keys():
-        result = os_command(['date', '-s', configs['time']])
+        result = os_command(['date', '-s', configs['time']], notify=False)
     else:
         return make_response('Missing Time in headers'), 400
     return make_response(result)
@@ -131,7 +147,6 @@ def get_events():
 @app.route('/add_event', methods=['POST'])
 def add_event():
     configs = request.headers
-    print(list(configs.keys()))
     if any(i not in configs.keys() for i in ['Event-Type', 'Event-Start', 'Event-End', 'Callback-Url']):
         return make_response('Missing Event-Type, Event-Start, Event-End, and/or Callback-URL in headers'), 400
 
@@ -139,6 +154,7 @@ def add_event():
     event_end = int(configs['Event-End'])
     event_type = configs['Event-Type']
     callback_url = configs['Callback-Url']
+    ret_msg = 'OK'
 
     ensure_event_file_initialized()
     event_state = load_event_state()
@@ -164,11 +180,22 @@ def add_event():
         with open(event_file, 'a') as f:
             f.write(f'{event_state["id"]},{event_state["current"]},{event_state["start"]},{event_end}\n')
 
+        try:
+            response = post_message(configs['Callback-Url'], {"activity": event_state['current'], "start_time": event_state['start'], "end_time":event_end})
+            if response.status_code != 200:
+                ret_msg = f'Error posting to {configs["Callback-Url"]}: {response.text}'
+            else:
+                logger.info(f'200 OK: {response.text}')
+        except:
+            ret_msg = f'Error posting to {configs["Callback-Url"]}: {traceback.format_exc()}'
+            logger.info(ret_msg)
+
         event_state['current'] = None
         event_state['start'] = -1
         save_event_state(event_state)
+            
 
-    return make_response('OK'), 200
+    return make_response(ret_msg), 200
 
 
 @app.route('/get_version', methods=['GET'])
