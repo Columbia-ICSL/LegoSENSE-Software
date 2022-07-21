@@ -2,6 +2,7 @@ import os
 import sys
 import string
 import pickle
+import logging
 import requests
 import datetime
 import traceback
@@ -13,8 +14,14 @@ sys.path.append(os.path.dirname((os.path.dirname(os.path.realpath(__file__)))))
 LOG_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'log')
 
 from log_util import get_logger
-logger = get_logger('Controller', file=os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"controller_%y%m%d_%H%M%S.log")))
+log_file_path = os.path.join(LOG_FOLDER, datetime.datetime.now().strftime(f"controller_%y%m%d_%H%M%S.log"))
+f_handler = logging.FileHandler(log_file_path)
+f_handler.setLevel(logging.DEBUG)
+f_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s - %(message)s'))
 
+logger = get_logger('Controller', file_handler=f_handler)
+flask_logger = logging.getLogger('werkzeug')
+flask_logger.addHandler(f_handler)
 
 src_dir = os.path.dirname((os.path.dirname(os.path.realpath(__file__))))
 log_dir = os.path.join(src_dir, 'log')
@@ -146,6 +153,7 @@ def get_events():
 
 @app.route('/add_event', methods=['POST'])
 def add_event():
+    logger.info(f'/add_event: {request.headers}')
     configs = request.headers
     if any(i not in configs.keys() for i in ['Event-Type', 'Event-Start', 'Event-End', 'Callback-Url']):
         return make_response('Missing Event-Type, Event-Start, Event-End, and/or Callback-URL in headers'), 400
@@ -187,8 +195,8 @@ def add_event():
             else:
                 logger.info(f'200 OK: {response.text}')
         except:
-            ret_msg = f'Error posting to {configs["Callback-Url"]}: {traceback.format_exc()}'
-            logger.info(ret_msg)
+            ret_msg = f'Error posting to {configs["Callback-Url"]}: {traceback.format_exc(0)}'
+            logger.error(f'Error posting to {configs["Callback-Url"]}: {traceback.format_exc()}')
 
         event_state['current'] = None
         event_state['start'] = -1
