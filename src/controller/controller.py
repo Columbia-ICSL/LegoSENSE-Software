@@ -1,4 +1,5 @@
 import os
+import string
 import pickle
 import subprocess
 from flask import Flask, request, make_response, jsonify
@@ -7,6 +8,7 @@ src_dir = os.path.dirname((os.path.dirname(os.path.realpath(__file__))))
 log_dir = os.path.join(src_dir, 'log')
 event_file = os.path.join(log_dir, 'events.log')
 event_state_file = os.path.join(log_dir, 'event_state.pkl')
+log_filter_chars = set(string.printable)  # For filter invalid characters in log
 
 app = Flask(__name__)
 
@@ -116,7 +118,12 @@ def get_events():
     with open(event_file, 'r') as f:
         events_log = f.readlines()[1:]
         for event in events_log:
-            event_id, event_name, event_start, event_end = event.strip().split(',')
+            parsed = event.strip()
+            parsed = ''.join(filter(lambda x: x in log_filter_chars, parsed))
+            parsed = parsed.split(',')
+            if len(parsed) != 4:
+                continue
+            event_id, event_name, event_start, event_end = parsed
             events[event_id] = {'name': event_name, 'start': event_start, 'end': event_end}
     return jsonify({'state': load_event_state(), 'events': events})
 
