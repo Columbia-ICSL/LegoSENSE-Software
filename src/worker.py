@@ -1,12 +1,14 @@
 # Workers for SensorHub Background Process
 import os
 import time
+import json
 import datetime
 import importlib
 import traceback
 from threading import Thread
 from contextlib import ExitStack
 
+import redis
 from flask import Flask, make_response, render_template, request, jsonify
 from flask_sse import sse
 # from gevent.pywsgi import WSGIServer
@@ -33,6 +35,40 @@ if not os.path.exists(LOG_FOLDER):
         os.umask(original_umask)
 
 resource_manager = ResourceManager()
+
+# --------------- Web server to handle requests from seh start/... ---------------
+dashboard_root = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dashboard'), 'apps')
+server = Flask(
+    __name__,
+    root_path=dashboard_root
+)
+server.config['REDIS_URL'] = 'redis://localhost'
+server.register_blueprint(sse, url_prefix='/stream')
+server_logger = get_logger('WebServer')
+manager = None
+
+
+# --------------- Use Redis to publish data to other applications, and receive notifications ---------------
+redis_inst = redis.StrictRedis()
+
+class DashboardUpdateReceiver(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.redis = redis.StrictRedis()
+        self.pubsub = self.redis.pubsub()
+        self.pubsub.psubscribe('dashboard_events')
+
+    def run(self):
+        for m in self.pubsub.listen():
+            if 'pmessage' != m['type']:
+                continue
+            ch_name = m["channel"].decode('utf-8')
+            ch_data = json.loads(m['data'].decode('utf-8'))
+            if ch_name == 'dashboard_events':
+                print(ch_data)
+                with server.app_context():
+                    destination = f'dashboard_events'
+                    sse.publish(ch_data, type=destination)
 
 
 class ModuleWorker(Thread):
@@ -158,6 +194,7 @@ class ModuleWorker(Thread):
 
     def handle_data(self, sensor, data):
         self.save_log(sensor, data)
+        redis_inst.publish(f'data-{sensor}', json.dumps(data).encode('utf-8'))
         with server.app_context():
             t = data['_t']
             del data['_t']
@@ -267,18 +304,6 @@ class PlugAndPlayWorker(Thread):
                 last_connected_modules = self.connected_modules.copy()
 
 
-# --------------- Web server to handle requests from seh start/... ---------------
-dashboard_root = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dashboard'), 'apps')
-server = Flask(
-    __name__,
-    root_path=dashboard_root
-)
-server.config['REDIS_URL'] = 'redis://localhost'
-server.register_blueprint(sse, url_prefix='/stream')
-server_logger = get_logger('WebServer')
-manager = None
-
-
 # TODO: Instead of copy these routes from SensorHub-dashboard submodule, import from it
 @server.route("/get_slots")
 def get_slots():
@@ -360,7 +385,7 @@ def start_web_server(module_manager):
     manager = module_manager
     Thread(target=lambda: server.run(host='0.0.0.0', port=WEB_SERVER_PORT, debug=True, use_reloader=False)).start()
     # Thread(target=lambda: WSGIServer(('0.0.0.0', WEB_SERVER_PORT), server).serve_forever()).start()
-
+    DashboardUpdateReceiver().start()
 
 if __name__ == '__main__':
     import random
