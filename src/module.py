@@ -47,14 +47,22 @@ class SensorHubModuleManager:
         return installed_modules
 
     def get_sensors(self, module):
-        return self.modules_worker[module].module_sensors if module in self.modules_worker.keys() else []
+        assert module in self.modules_worker.keys(), f'{module} has no running worker!'
+        return self.modules_worker[module].module_sensors
 
     def get_sensor_cols(self, module):
         return self.modules_worker[module].sensor_cols
 
     def get_modules_and_sensors(self):
         modules = []
+        self.installed_modules = self.modules_detector.connected_modules
         for slot_name, module_name in self.installed_modules.items():
+            # Check that module worker is running
+            if module_name not in self.modules_worker.keys():
+                if module_name != '':
+                    logger.debug(f"Unexpectedly Init ModuleWorker for {module_name} at {slot_name}")
+                    self.modules_worker[module_name] = ModuleWorker(module_name, slot_name)
+
             module = dict()
             if module_name != '':
                 sensors = self.get_sensors(module_name)
