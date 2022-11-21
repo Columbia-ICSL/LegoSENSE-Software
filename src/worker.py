@@ -16,6 +16,7 @@ from config import WEB_SERVER_PORT
 from hal.util import ResourceManager
 from hal.interface import SensorHubInterface
 from log_util import get_logger
+import file_view
 
 import platform
 IS_RPI = platform.machine() == 'armv7l'
@@ -317,9 +318,8 @@ def index_page():
     return render_template('dashboard/main.html', segment="dashboard", modules=modules)
 
 
-@server.route('/data')
-def data_page():
-    return render_template('data/main.html', segment="data")
+# File explorer at /data
+file_view.install(server)
 
 
 # TODO: What if I have two same module?
