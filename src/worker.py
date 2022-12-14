@@ -5,6 +5,7 @@ import json
 import datetime
 import importlib
 import traceback
+import subprocess
 from threading import Thread
 from contextlib import ExitStack
 
@@ -316,6 +317,18 @@ def get_slots():
 def index_page():
     modules = manager.get_modules_and_sensors()
     return render_template('dashboard/main.html', segment="dashboard", modules=modules)
+
+
+@server.route("/shutdown")
+def shutdown():
+    subprocess.Popen(['/sbin/shutdown', '-h', 'now'])
+    return render_template('dashboard/message.html', segment="dashboard", title='Shutdown', message='Shutdown command sent.')
+
+
+@server.route("/reboot")
+def reboot():
+    subprocess.Popen(['/sbin/reboot', 'now'])
+    return render_template('dashboard/message.html', segment="dashboard", title='Reboot', message='Reboot command sent.')
 
 
 # File explorer at /data
