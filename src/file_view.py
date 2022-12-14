@@ -1,5 +1,6 @@
 import os
 import stat
+import time
 import datetime
 import humanize
 from flask import render_template, make_response, send_file
@@ -29,16 +30,18 @@ def install(server):
     @server.template_filter('time_humanize')
     def time_humanize(timestamp):
         mdate = datetime.datetime.utcfromtimestamp(timestamp)
-        return humanize.naturaltime(mdate)
+        return humanize.naturaldelta(datetime.datetime.utcfromtimestamp(time.time()) - mdate, months=True,
+                                     minimum_unit='seconds') + ' ago'
 
     class PathView(MethodView):
         def get(self, p=''):
             path = os.path.join(LOG_FOLDER, p)
-
             if os.path.isdir(path):
                 contents = []
                 total = {'size': 0, 'dir': 0, 'file': 0}
                 for filename in os.listdir(path):
+                    if not filename.endswith('.csv'):
+                        continue
                     # if filename in ignored:
                     #     continue
                     filepath = os.path.join(path, filename)
@@ -60,6 +63,8 @@ def install(server):
                 page = render_template('data/main.html', segment='data', path=p, contents=contents_sorted, total=total)
                 res = make_response(page, 200)
             elif os.path.isfile(path):
+                if not path.endswith('.csv'):
+                    return make_response('You can only access csv files.', 400)
                 # TODO: Restrict file extension to .csv and .log?
                 print(f"Sending file {path}")
                 res = send_file(path, as_attachment=True)
