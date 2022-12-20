@@ -1,6 +1,8 @@
 import os
 import stat
 import time
+import glob
+import zipfile
 import datetime
 import humanize
 from flask import render_template, make_response, send_file
@@ -68,6 +70,16 @@ def install(server):
                 # TODO: Restrict file extension to .csv and .log?
                 print(f"Sending file {path}")
                 res = send_file(path, as_attachment=True)
+            elif p == "zip_data":
+                current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                zip_file_name = f'data_{current_time}.zip'
+                zip_file_path = os.path.join('/tmp/', zip_file_name)
+
+                # Zip all the .csv files in the /data folder
+                with zipfile.ZipFile(zip_file_path, 'w') as zip_file:
+                    for file in glob.glob(os.path.join(LOG_FOLDER, '*.csv')):
+                        zip_file.write(file, os.path.basename(file))
+                res = send_file(zip_file_path, as_attachment=True)
             else:
                 res = make_response('Not found', 404)
             return res
