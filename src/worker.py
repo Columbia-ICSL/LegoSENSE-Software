@@ -321,14 +321,14 @@ def index_page():
 
 @server.route("/shutdown")
 def shutdown():
-    subprocess.Popen(['/sbin/shutdown', '-h', 'now'])
-    return render_template('dashboard/message.html', segment="dashboard", title='Shutdown', message='Shutdown command sent.')
+    subprocess.Popen("sleep 5 && /sbin/shutdown -h now", shell=True)
+    return render_template('dashboard/message.html', segment="dashboard", title='Shutdown', message='System shutting down now... Please wait for 1 miunte before unplugging the cable.')
 
 
 @server.route("/reboot")
 def reboot():
-    subprocess.Popen(['/sbin/reboot', 'now'])
-    return render_template('dashboard/message.html', segment="dashboard", title='Reboot', message='Reboot command sent.')
+    subprocess.Popen("sleep 5 && /sbin/reboot now", shell=True)
+    return render_template('dashboard/message.html', segment="dashboard", title='Reboot', message='System rebooting now... Please allow up to 5 minutes for the system to connect to the Internet and go back up.')
 
 
 # File explorer at /data
