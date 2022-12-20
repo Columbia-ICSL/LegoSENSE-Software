@@ -5,7 +5,7 @@ import glob
 import zipfile
 import datetime
 import humanize
-from flask import render_template, make_response, send_file
+from flask import render_template, make_response, send_file, redirect
 from flask.views import MethodView
 
 LOG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'log')
@@ -84,6 +84,22 @@ def install(server):
                 res = make_response('Not found', 404)
             return res
 
+    class DeleteDataView(MethodView):
+        def get(self, p=''):
+            path = os.path.join(LOG_FOLDER, p)
+            if os.path.isfile(path):
+                if not path.endswith('.csv'):
+                    return make_response('You can only delete csv files.', 400)
+                else:
+                    print(f'Deleting {path}')
+                    os.rename(path, path+'.trash')
+                res = redirect('/data', code=302)
+            else:
+                res = make_response('Not found', 404)
+            return res
+
     path_view = PathView.as_view('path_view')
+    delete_data_view = DeleteDataView.as_view('delete_data_view')
     server.add_url_rule('/data', view_func=path_view)
     server.add_url_rule('/data/<path:p>', view_func=path_view)
+    server.add_url_rule('/delete_data/<path:p>', view_func=delete_data_view)
