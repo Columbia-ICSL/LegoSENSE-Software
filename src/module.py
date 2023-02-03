@@ -4,6 +4,8 @@ from log_util import get_logger
 
 logger = get_logger('ModuleManager')
 
+class ModuleInitializationError(Exception):
+    pass
 
 class SensorHubModuleManager:
     def __init__(self):
@@ -74,8 +76,13 @@ class SensorHubModuleManager:
         return modules
 
     def get_module_config(self, module):
-        parsed = self.modules_worker[module].driver.get_config()
-        return {section: dict(parsed.items(section)) for section in parsed.sections()}
+            # If module init failed, this will raise AttributeError: 'ModuleWorker' object has no attribute 'driver'
+        try:
+            parsed = self.modules_worker[module].driver.get_config()
+            return {section: dict(parsed.items(section)) for section in parsed.sections()}
+        except AttributeError:
+            assert self.modules_worker[module].init_error is not None
+            raise ModuleInitializationError(f'{module}\'s driver could not initialize!\n\n{self.modules_worker[module].init_error}')
         # TODO: have driver define each config's default, data type, UI type (slider, dropdown select, etc)
 
     def set_module_config(self, module, sensor, new_cfg):

@@ -78,6 +78,7 @@ class ModuleWorker(Thread):
         assert isinstance(module_name, str)
         self.logger = get_logger(f'Worker-M{slot}({module_name})')
         self.logger.info(f"Init")
+        self.init_error = None
 
         # >>>>>>>>>>>> load driver >>>>>>>>>>>>
         self.module = module_name
@@ -119,27 +120,27 @@ class ModuleWorker(Thread):
         # <<<<<<<<<<<< driver Options <<<<<<<<<<<<
 
         for i in range(5):
-            error = None
+            self.init_error = None
             try:
                 self.driver = module_driver(
                     config_path=os.path.join(DRIVER_PATH, module_name, 'config.ini'),
                     interface=self.interface,
                     **additional_args
                 )
-                error = None
+                self.init_error = None
                 break
             except:
-                error = traceback.format_exc()
-                self.logger.error(error)
+                self.init_error = traceback.format_exc()
+                self.logger.error(self.init_error)
                 self.logger.error(f'Driver Init Failed. Wait 1 second before retrying...')
                 time.sleep(1)
                 continue
         
-        if error is not None:
+        if self.init_error is not None:
             fail_log_path = os.path.join(LOG_FOLDER,
                                         datetime.datetime.now().strftime(f"%y%m%d_%H%M%S_{module_name}_INIT_FAIL.csv"))
             with open(fail_log_path, 'w') as f:
-                f.write(error)
+                f.write(self.init_error)
             self.logger.error('Too much failed attempts to initialize driver. Daughterboard ignored.')
             return
 
