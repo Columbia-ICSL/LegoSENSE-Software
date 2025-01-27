@@ -301,7 +301,7 @@ class PlugAndPlayWorker(Thread):
                     sse.publish({
                         'type': 'module_list_changed',
                         'action': ['alert_then_refresh'],
-                        'alert': 'Attached modules changed!',
+                        'alert': 'Refreshing module list...',
                     }, type=destination)
                     # print(f'Published to {destination}')
                 last_connected_modules = self.connected_modules.copy()
